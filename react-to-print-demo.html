@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React-to-Print PDF Export Demo</title>
+    <style>
+        body {
+            font-family: 'Sarabun', 'Noto Sans Thai', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f2;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #1E4D3A;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #577B92;
+            font-size: 1.1rem;
+        }
+        
+        .demo-section {
+            margin-bottom: 40px;
+            padding: 30px;
+            border: 2px solid #E86F2C;
+            border-radius: 8px;
+            background: #fff8f5;
+        }
+        
+        .demo-section h2 {
+            color: #1E4D3A;
+            margin-bottom: 20px;
+        }
+        
+        .screenplay-sample {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-family: 'Courier Prime', monospace;
+            line-height: 1.6;
+        }
+        
+        .scene-heading {
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 1em;
+        }
+        
+        .action {
+            margin-bottom: 1em;
+        }
+        
+        .character {
+            margin-left: 3.7in;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 0.5em;
+        }
+        
+        .dialogue {
+            margin-left: 2.5in;
+            margin-right: 1.7in;
+            margin-bottom: 1em;
+        }
+        
+        .export-button {
+            background: linear-gradient(45deg, #E86F2C, #ff6b35);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .export-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(232, 111, 44, 0.3);
+        }
+        
+        .thai-indicator {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        
+        .benefits {
+            background: linear-gradient(135deg, #e8f5e8, #e3f2fd);
+            padding: 30px;
+            border-radius: 8px;
+            margin-top: 40px;
+        }
+        
+        .benefits h3 {
+            color: #1E4D3A;
+            margin-bottom: 20px;
+        }
+        
+        .benefits ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .benefits li {
+            color: #577B92;
+            margin-bottom: 10px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .benefits li::before {
+            content: "✅";
+            position: absolute;
+            left: 0;
+        }
+        
+        /* Print Styles */
+        @media print {
+            @page {
+                size: A4;
+                margin: 25mm 20mm 25mm 30mm;
+            }
+            
+            body * {
+                visibility: hidden;
+            }
+            
+            .printable-content,
+            .printable-content * {
+                visibility: visible;
+            }
+            
+            .printable-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                font-family: 'Sarabun', 'Noto Sans Thai', 'Courier Prime', monospace;
+                font-size: 12pt;
+                line-height: 1.2;
+                color: black !important;
+                background: white !important;
+            }
+            
+            .title-page {
+                page-break-after: always;
+                height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+            }
+            
+            .screenplay-title {
+                font-size: 24pt;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin-bottom: 4em;
+            }
+            
+            .written-by {
+                font-size: 14pt;
+                margin-bottom: 1em;
+            }
+            
+            .author-name {
+                font-size: 16pt;
+                margin-bottom: 4em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 React-to-Print PDF Export</h1>
+            <p>Perfect Thai PDF export using browser's native print capabilities</p>
+        </div>
+        
+        <div class="demo-section">
+            <h2>📄 English Screenplay Sample</h2>
+            <div class="screenplay-sample">
+                <div class="scene-heading">INT. COFFEE SHOP - DAY</div>
+                <div class="action">A bustling coffee shop filled with the aroma of freshly brewed coffee. SARAH, a young writer in her twenties, sits at a corner table with her laptop.</div>
+                <div class="character">SARAH</div>
+                <div class="dialogue">This new PDF export system is amazing! No more blurry Thai text.</div>
+                <div class="action">She types enthusiastically on her laptop, a smile spreading across her face.</div>
+            </div>
+            <button class="export-button" onclick="printEnglish()">
+                📄 Export English PDF
+            </button>
+        </div>
+        
+        <div class="demo-section">
+            <h2>🇹🇭 Thai Screenplay Sample</h2>
+            <div class="screenplay-sample">
+                <div class="scene-heading">ภายใน. ร้านกาแฟ - กลางวัน</div>
+                <div class="action">ร้านกาแฟที่คึกคักเต็มไปด้วยกลิ่นหอมของกาแฟที่เพิ่งชงใหม่ สาราห์ นักเขียนสาววัยยี่สิบต้นๆ นั่งอยู่ที่โต๊ะมุมพร้อมแล็ปท็อป</div>
+                <div class="character">สาราห์</div>
+                <div class="dialogue">ระบบส่งออก PDF ใหม่นี้เยี่ยมมาก! ไม่มีตัวอักษรไทยเบลอแล้ว</div>
+                <div class="action">เธอพิมพ์อย่างกระตือรือร้นบนแล็ปท็อป รอยยิ้มค่อยๆ แผ่ขยายบนใบหน้า</div>
+            </div>
+            <button class="export-button" onclick="printThai()">
+                📄 Export Thai PDF
+                <span class="thai-indicator">🇹🇭 TH</span>
+            </button>
+        </div>
+        
+        <div class="benefits">
+            <h3>✅ Benefits of React-to-Print Approach</h3>
+            <ul>
+                <li><strong>Perfect Thai text rendering</strong> - Browser native fonts</li>
+                <li><strong>No blurry text</strong> - Native browser rendering</li>
+                <li><strong>Proper A4 layout</strong> - CSS @page control</li>
+                <li><strong>No overflow issues</strong> - CSS handles layout perfectly</li>
+                <li><strong>Faster implementation</strong> - Much simpler code</li>
+                <li><strong>More reliable</strong> - Browser print system is bulletproof</li>
+                <li><strong>Better user experience</strong> - Familiar print dialog</li>
+                <li><strong>Future-proof</strong> - Works with any new fonts/languages</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Hidden printable content for English -->
+    <div id="english-printable" class="printable-content" style="display: none;">
+        <div class="title-page">
+            <div>
+                <h1 class="screenplay-title">SAMPLE ENGLISH SCREENPLAY</h1>
+                <div class="written-by">Written by</div>
+                <div class="author-name">LiQid Demo</div>
+            </div>
+        </div>
+        <div class="screenplay-content">
+            <div class="scene-heading">INT. COFFEE SHOP - DAY</div>
+            <div class="action">A bustling coffee shop filled with the aroma of freshly brewed coffee. SARAH, a young writer in her twenties, sits at a corner table with her laptop.</div>
+            <div class="character">SARAH</div>
+            <div class="dialogue">This new PDF export system is amazing! No more blurry Thai text.</div>
+            <div class="action">She types enthusiastically on her laptop, a smile spreading across her face.</div>
+        </div>
+    </div>
+    
+    <!-- Hidden printable content for Thai -->
+    <div id="thai-printable" class="printable-content" style="display: none;">
+        <div class="title-page">
+            <div>
+                <h1 class="screenplay-title">ตัวอย่างบทภาพยนตร์ไทย</h1>
+                <div class="written-by">เขียนโดย</div>
+                <div class="author-name">LiQid เดโม</div>
+            </div>
+        </div>
+        <div class="screenplay-content">
+            <div class="scene-heading">ภายใน. ร้านกาแฟ - กลางวัน</div>
+            <div class="action">ร้านกาแฟที่คึกคักเต็มไปด้วยกลิ่นหอมของกาแฟที่เพิ่งชงใหม่ สาราห์ นักเขียนสาววัยยี่สิบต้นๆ นั่งอยู่ที่โต๊ะมุมพร้อมแล็ปท็อป</div>
+            <div class="character">สาราห์</div>
+            <div class="dialogue">ระบบส่งออก PDF ใหม่นี้เยี่ยมมาก! ไม่มีตัวอักษรไทยเบลอแล้ว</div>
+            <div class="action">เธอพิมพ์อย่างกระตือรือร้นบนแล็ปท็อป รอยยิ้มค่อยๆ แผ่ขยายบนใบหน้า</div>
+        </div>
+    </div>
+    
+    <script>
+        function printEnglish() {
+            // Show the English printable content
+            const englishContent = document.getElementById('english-printable');
+            englishContent.style.display = 'block';
+            
+            // Trigger print
+            window.print();
+            
+            // Hide the content after printing
+            setTimeout(() => {
+                englishContent.style.display = 'none';
+            }, 100);
+        }
+        
+        function printThai() {
+            // Show the Thai printable content
+            const thaiContent = document.getElementById('thai-printable');
+            thaiContent.style.display = 'block';
+            
+            // Trigger print
+            window.print();
+            
+            // Hide the content after printing
+            setTimeout(() => {
+                thaiContent.style.display = 'none';
+            }, 100);
+        }
+        
+        // Instructions for users
+        window.addEventListener('beforeprint', () => {
+            console.log('🖨️ Print dialog opening...');
+            console.log('📋 Instructions:');
+            console.log('1. In the print dialog, choose "Save as PDF" as destination');
+            console.log('2. Select A4 paper size');
+            console.log('3. Click "Save" to get your perfect PDF!');
+        });
+        
+        window.addEventListener('afterprint', () => {
+            console.log('✅ Print dialog closed');
+        });
+    </script>
+</body>
+</html>

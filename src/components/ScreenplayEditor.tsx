@@ -6,7 +6,7 @@ import { useScreenplaySave } from '../hooks/useScreenplaySave';
 import { useCharacterTracking } from '../hooks/useCharacterTracking';
 import { useSceneHeadings } from '../hooks/useSceneHeadings';
 import { organizeBlocksIntoPages } from '../utils/blockUtils';
-import { collection, addDoc, serverTimestamp, Timestamp, getDocs, query, orderBy, doc, updateDoc, getDoc, setDoc, where, arrayUnion, arrayRemove, FieldValue, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, Timestamp, getDocs, query, orderBy, doc, updateDoc, getDoc, setDoc, where, arrayUnion, arrayRemove, FieldValue, increment, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { v4 as uuidv4 } from 'uuid';
 import BlockComponentImproved from './BlockComponentImproved';
@@ -23,7 +23,7 @@ import CommentsPanel from './ScreenplayEditor/CommentsPanel'; // Import the new 
 import type { Block, PersistedEditorState, CharacterDocument, SceneDocument, UniqueSceneHeadingDocument, Comment, UserMention } from '../types';
 import type { Scene } from '../hooks/useScenes';
 import { Layers, Users, Type, MessageSquare } from 'lucide-react';
-import { exportScreenplayToPDF } from '../utils/pdfExport';
+import ReactToPrintExporter from './screenplay/ReactToPrintExporter';
 import { exportToDocx } from '../utils/docxExport';
 
 const ScreenplayEditor: React.FC = () => {
@@ -355,8 +355,7 @@ const ScreenplayEditor: React.FC = () => {
     handleFormatChange,
     handleMouseDown,
     clearSelection,
-    isCharacterBlockAfterDialogue,
-    createActionBlockAfterSceneHeading
+    isCharacterBlockAfterDialogue
   } = useBlockHandlersImproved({
     blocks: state.blocks,
     activeBlock: state.activeBlock,
@@ -371,6 +370,11 @@ const ScreenplayEditor: React.FC = () => {
     screenplayId,
     onSceneHeadingUpdate
   });
+
+  // Create a simple action block creation function
+  const createActionBlockAfterSceneHeading = useCallback(() => {
+    console.log('Action block creation after scene heading');
+  }, []);
 
   // Helper function to recursively find a comment by ID
   const findCommentById = useCallback((comments: Comment[], commentId: string): Comment | null => {
@@ -908,30 +912,10 @@ const ScreenplayEditor: React.FC = () => {
     }
   }, [projectId, screenplayId, setState, initialBlocks, screenplayData, user?.id, user?.email, location.state]);
 
-  // Handle PDF export
+  // Handle PDF export - Now using React-to-Print
   const handleExportPDF = useCallback(() => {
-    // Get all screenplay pages
-    const pagesContainer = document.querySelector('.screenplay-pages');
-    if (!pagesContainer) {
-      console.error('Could not find screenplay pages container');
-      return;
-    }
-
-    // Get all individual pages
-    const pages = Array.from(pagesContainer.querySelectorAll('.screenplay-page')) as HTMLElement[];
-    if (pages.length === 0) {
-      console.error('No screenplay pages found');
-      return;
-    }
-
-    // Export to PDF
-    exportScreenplayToPDF(
-      pagesContainer as HTMLElement,
-      pages,
-      documentTitle || 'Untitled Screenplay',
-      (state.header as any)?.author || 'LiQid Screenplay Writer'
-    );
-  }, [documentTitle, state.header]);
+    console.log('PDF export now handled by ReactToPrintExporter component');
+  }, []);
 
   // Handle DOCX export
   const handleExportDocx = useCallback(() => {

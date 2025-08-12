@@ -16,7 +16,7 @@ import ConflictDialog from './screenplay/ConflictDialog';
 import type { SaveResult } from '../types/screenplay';
 import DisplayOptionsDropdown from './screenplay/DisplayOptionsDropdown';
 import MoreOptionsDropdown from './screenplay/MoreOptionsDropdown';
-import { exportScreenplayToPDF } from '../utils/pdfExport';
+import ReactToPrintExporter from './screenplay/ReactToPrintExporter';
 import { exportToDocx } from '../utils/docxExport';
 
 interface ScreenplayNavigatorProps {
@@ -296,15 +296,24 @@ const ScreenplayNavigator: React.FC<ScreenplayNavigatorProps> = ({
               <span>Save</span>
             </button>
             
-            {/* Export PDF Button */}
-            <button
-              onClick={handleExportPDF}
-              className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center bg-gradient-to-r from-orange-500 to-red-500 text-white hover:opacity-90`}
-              title="Export PDF with Thai language support (A4 format)"
-            >
-              <FileDown size={18} className="mr-2" />
-              <span>Export PDF (A4)</span>
-            </button>
+            {/* Export PDF Button - Now using React-to-Print */}
+            {(() => {
+              const blocks = (window as any).screenplay?.state?.blocks || [];
+              const header = (window as any).screenplay?.state?.header || {
+                title: documentTitle || 'Untitled Screenplay',
+                author: 'LiQid Screenplay Writer',
+                contact: ''
+              };
+              
+              return (
+                <ReactToPrintExporter
+                  blocks={blocks}
+                  title={header.title || documentTitle || 'Untitled Screenplay'}
+                  author={header.author || 'LiQid Screenplay Writer'}
+                  contact={header.contact || ''}
+                />
+              );
+            })()}
             
             {/* Export DOCX Button */}
             <button

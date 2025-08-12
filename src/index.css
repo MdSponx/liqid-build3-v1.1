@@ -625,40 +625,302 @@ body {
   }
 }
 
+/* Print Utilities */
 @media print {
+  .screen-only { 
+    display: none !important; 
+  }
+  
+  .print-only { 
+    display: block !important; 
+  }
+
+  @page {
+    size: A4;
+    margin: 0.75in;
+  }
+
+  .page-break-after {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  /* Hide everything except printable content */
   body * {
     visibility: hidden;
   }
   
-  .screenplay-content,
-  .screenplay-content * {
+  .printable-screenplay,
+  .printable-screenplay * {
     visibility: visible;
   }
 
-  .screenplay-content {
+  /* Base print setup */
+  .printable-screenplay {
     position: absolute;
     left: 0;
     top: 0;
-    width: 8.5in;
-    padding: 1in !important;
+    width: 100%;
+    color: black !important;
     background: white !important;
   }
 
-  .screenplay-block {
+  /* Cover Page Styles - Perfect Centering */
+  .cover-page {
+    height: 100vh; /* Full viewport height for perfect centering */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+  }
+
+  .cover-poster {
+    max-height: 40vh;
+    width: auto;
+    object-fit: contain;
+    margin-bottom: 2rem;
+  }
+
+  .cover-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 2rem;
+    font-family: "Courier Prime", "Courier New", Courier, monospace;
+    text-transform: uppercase;
+  }
+
+  .cover-logline {
+    font-size: 1.125rem;
+    margin-bottom: 3rem;
+    max-width: 600px;
+    line-height: 1.4;
+    font-family: "Courier Prime", "Courier New", Courier, monospace;
+  }
+
+  .cover-credits {
+    font-size: 1rem;
+    line-height: 1.5;
+    font-family: "Courier Prime", "Courier New", Courier, monospace;
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .cover-credits > div {
+    margin-bottom: 0.5rem;
+  }
+
+  /* Script Body Styles */
+  .script {
+    font-family: "Courier Prime", "Courier New", Courier, monospace;
+    line-height: 1.35;
+    font-size: 12pt;
     color: black !important;
-    font-family: 'Courier Prime', monospace !important;
   }
 
-  .screenplay-block * {
-    background: none !important;
-    box-shadow: none !important;
+  /* Grid Layout for Script Rows */
+  .script-row {
+    display: grid;
+    grid-template-columns: 1fr max-content;
+    align-items: start;
+    column-gap: 0.5rem;
+    margin-bottom: 1em;
+    page-break-inside: avoid;
   }
 
-  .screenplay-block {
-    margin-bottom: 1em !important;
+  .script-row--single {
+    display: grid;
+    grid-template-columns: 1fr;
+    margin-bottom: 1em;
+    page-break-inside: avoid;
   }
 
-  .screenplay-block [class*="number"] {
-    display: none !important;
+  /* Right Rail Alignment */
+  .rail-right {
+    text-align: right;
+    white-space: nowrap;
+    font-weight: bold;
+    text-transform: uppercase;
   }
+
+            /* Script Content Styling - Hollywood Standard Format */
+            .scene-number {
+                margin-left: -0.5in; /* Slightly outdented */
+                margin-bottom: 0.5em;
+                font-weight: bold;
+                font-family: "Courier Prime", "Courier New", Courier, monospace;
+            }
+
+            .scene-heading, .action, .text, .shot {
+                margin-left: 0;
+                margin-bottom: 0.5em;
+                font-family: "Courier Prime", "Courier New", Courier, monospace;
+            }
+
+            .scene-heading {
+                font-weight: bold;
+                text-transform: uppercase;
+                margin-top: 1em;
+            }
+
+            .action {
+                text-align: justify;
+            }
+
+            .character {
+                margin-left: 3.7in; /* Standard character indent */
+                font-weight: bold;
+                text-transform: uppercase;
+                margin-top: 1em;
+                margin-bottom: 0.25em;
+                font-family: "Courier Prime", "Courier New", Courier, monospace;
+            }
+
+            .dialogue {
+                margin-left: 2.5in; /* Standard dialogue indent */
+                margin-right: 2.0in; /* Right margin for dialogue */
+                margin-bottom: 0.5em;
+                font-family: "Courier Prime", "Courier New", Courier, monospace;
+            }
+
+            .parenthetical {
+                margin-left: 3.1in; /* Standard parenthetical indent */
+                margin-right: 2.5in;
+                font-style: italic;
+                margin-bottom: 0.25em;
+                font-family: "Courier Prime", "Courier New", Courier, monospace;
+            }
+
+            .text {
+                text-align: justify;
+            }
+
+            .shot {
+                font-weight: bold;
+                text-transform: uppercase;
+            }
+
+            /* Right Rail Elements - Match script font */
+            .rail-right {
+                font-family: "Courier Prime", "Courier New", Courier, monospace !important;
+                font-weight: normal !important;
+                text-transform: none !important;
+            }
+
+  /* Prevent orphans and widows */
+  .script-row,
+  .script-row--single {
+    orphans: 2;
+    widows: 2;
+  }
+}
+
+/* Screen Display Styles (non-print) */
+.print-only {
+  display: none;
+}
+
+.screen-only {
+  display: block;
+}
+
+/* Grid Layout for Screen Display */
+.script-row {
+  display: grid;
+  grid-template-columns: 1fr max-content;
+  align-items: start;
+  column-gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.script-row--single {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-bottom: 1rem;
+}
+
+.rail-right {
+  text-align: right;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #666;
+  font-weight: normal;
+}
+
+.dark .rail-right {
+  color: #9ca3af;
+}
+
+/* Script Content Styling for Screen */
+.script {
+  font-family: 'Noto Sans Thai', sans-serif;
+  line-height: 1.5;
+}
+
+.scene-heading {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.action {
+  margin-bottom: 0.5rem;
+}
+
+.character {
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.dialogue {
+  margin-bottom: 0.5rem;
+}
+
+.parenthetical {
+  font-style: italic;
+  margin-bottom: 0.25rem;
+}
+
+.text {
+  margin-bottom: 0.5rem;
+}
+
+.shot {
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+/* Screen display styles for scene and dialog numbers */
+.screenplay-block {
+  position: relative;
+}
+
+.dialog-number {
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 12px;
+  color: #666;
+  font-weight: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dark .dialog-number {
+  color: #9ca3af;
+}
+
+/* Ensure dialog blocks have space for numbers */
+.screenplay-block[data-block-type="dialogue"] {
+  padding-right: 30px;
+}
+
+/* Scene heading numbers should be part of the text, not separate */
+.screenplay-block[data-block-type="scene-heading"] {
+  font-weight: bold;
 }
