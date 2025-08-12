@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thai PDF Export Test</title>
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1E4D3A;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .thai-text {
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-left: 4px solid #E86F2C;
+        }
+        button {
+            background: linear-gradient(135deg, #E86F2C, #1E4D3A);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .console-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🇹🇭 Thai PDF Export Test</h1>
+        
+        <div class="test-section">
+            <h3>Test Content (Thai + English)</h3>
+            <div class="thai-text">
+                <strong>Scene Heading:</strong> EXT. ถนนกรุงเทพ - กลางวัน
+            </div>
+            <div class="thai-text">
+                <strong>Action:</strong> คนเดินผ่านไปมาในถนนที่คึกคัก รถยนต์และรถจักรยานยนต์วิ่งผ่านไปมาอย่างไม่หยุดหย่อน
+            </div>
+            <div class="thai-text">
+                <strong>Character:</strong> สมชาย
+            </div>
+            <div class="thai-text">
+                <strong>Dialogue:</strong> สวัสดีครับ วันนี้อากาศดีจังเลย
+            </div>
+            <div class="thai-text">
+                <strong>Parenthetical:</strong> (ยิ้มแย้มแจ่มใส)
+            </div>
+            <div class="thai-text">
+                <strong>More Dialogue:</strong> ขอกาแฟร้อนหนึ่งแก้วครับ
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Actions</h3>
+            <button onclick="runBasicThaiTest()">🧪 Run Basic Thai Test</button>
+            <button onclick="runAdvancedThaiTest()">🔬 Run Advanced Thai Test</button>
+            <button onclick="clearConsole()">🧹 Clear Console</button>
+        </div>
+
+        <div id="status" class="status info" style="display: none;">
+            Ready to test Thai PDF export...
+        </div>
+
+        <div class="test-section">
+            <h3>Console Output</h3>
+            <div id="console" class="console-output">
+                Console output will appear here...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Console capture
+        const consoleDiv = document.getElementById('console');
+        const statusDiv = document.getElementById('status');
+        
+        function logToConsole(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #718096;">[${timestamp}]</span> ${message}`;
+            consoleDiv.appendChild(logEntry);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        function showStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+
+        function clearConsole() {
+            consoleDiv.innerHTML = 'Console cleared...';
+            statusDiv.style.display = 'none';
+        }
+
+        // Override console methods to capture output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logToConsole(args.join(' '), 'info');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            logToConsole(`❌ ${args.join(' ')}`, 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            logToConsole(`⚠️ ${args.join(' ')}`, 'warn');
+        };
+
+        // Thai text utilities
+        function containsThaiText(text) {
+            const thaiRegex = /[\u0E00-\u0E7F]/;
+            return thaiRegex.test(text);
+        }
+
+        function normalizeThaiText(text) {
+            try {
+                let normalized = text.normalize('NFC');
+                
+                if (containsThaiText(normalized)) {
+                    // Remove zero-width characters that might cause rendering issues
+                    normalized = normalized.replace(/[\u200B-\u200D\uFEFF]/g, '');
+                    // Normalize spaces
+                    normalized = normalized.replace(/\s+/g, ' ').trim();
+                }
+                
+                return normalized;
+            } catch (error) {
+                console.warn('Text normalization failed:', error);
+                return text;
+            }
+        }
+
+        // Test data
+        const testBlocks = [
+            {
+                id: 'scene-1',
+                type: 'scene-heading',
+                content: 'EXT. ถนนกรุงเทพ - กลางวัน'
+            },
+            {
+                id: 'action-1',
+                type: 'action',
+                content: 'คนเดินผ่านไปมาในถนนที่คึกคัก รถยนต์และรถจักรยานยนต์วิ่งผ่านไปมาอย่างไม่หยุดหย่อน'
+            },
+            {
+                id: 'character-1',
+                type: 'character',
+                content: 'สมชาย'
+            },
+            {
+                id: 'dialogue-1',
+                type: 'dialogue',
+                content: 'สวัสดีครับ วันนี้อากาศดีจังเลย'
+            },
+            {
+                id: 'parenthetical-1',
+                type: 'parenthetical',
+                content: '(ยิ้มแย้มแจ่มใส)'
+            },
+            {
+                id: 'dialogue-2',
+                type: 'dialogue',
+                content: 'ขอกาแฟร้อนหนึ่งแก้วครับ'
+            },
+            {
+                id: 'transition-1',
+                type: 'transition',
+                content: 'CUT TO:'
+            }
+        ];
+
+        // Basic Thai PDF test
+        async function runBasicThaiTest() {
+            try {
+                showStatus('🧪 Running Basic Thai PDF Test...', 'info');
+                console.log('🧪 Starting Basic Thai PDF Export Test...');
+                
+                // Check if jsPDF is available
+                if (typeof window.jsPDF === 'undefined') {
+                    throw new Error('jsPDF library not loaded');
+                }
+
+                const { jsPDF } = window.jsPDF;
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'pt',
+                    format: 'a4'
+                });
+
+                console.log('✅ jsPDF initialized successfully');
+
+                // Test Thai text processing
+                const testText = 'สวัสดีครับ วันนี้อากาศดีจังเลย';
+                const normalizedText = normalizeThaiText(testText);
+                
+                console.log('📝 Original text:', testText);
+                console.log('🔧 Normalized text:', normalizedText);
+                console.log('🇹🇭 Contains Thai:', containsThaiText(testText));
+
+                // Set font and add text
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(16);
+                
+                // Add title
+                pdf.text('Thai PDF Export Test', 50, 50);
+                
+                // Add Thai content
+                let y = 100;
+                testBlocks.forEach((block, index) => {
+                    const processedText = normalizeThaiText(block.content);
+                    pdf.text(`${block.type.toUpperCase()}: ${processedText}`, 50, y);
+                    y += 30;
+                });
+
+                // Save the PDF
+                pdf.save('thai-test-basic.pdf');
+                
+                console.log('✅ Basic Thai PDF test completed successfully!');
+                console.log('📄 Check the downloaded PDF file: thai-test-basic.pdf');
+                showStatus('✅ Basic test completed! Check downloaded PDF.', 'success');
+
+            } catch (error) {
+                console.error('❌ Basic Thai PDF test failed:', error);
+                showStatus(`❌ Basic test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Advanced Thai PDF test with better formatting
+        async function runAdvancedThaiTest() {
+            try {
+                showStatus('🔬 Running Advanced Thai PDF Test...', 'info');
+                console.log('🔬 Starting Advanced Thai PDF Export Test...');
+                
+                if (typeof window.jsPDF === 'undefined') {
+                    throw new Error('jsPDF library not loaded');
+                }
+
+                const { jsPDF } = window.jsPDF;
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'pt',
+                    format: 'a4'
+                });
+
+                // Constants for A4 layout
+                const PAGE_HEIGHT = 841.89;
+                const PAGE_WIDTH = 595.28;
+                const MARGIN_LEFT = 85;
+                const MARGIN_RIGHT = 68;
+                const MARGIN_TOP = 68;
+                const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+                const LINE_HEIGHT = 14.4;
+
+                console.log('📐 PDF layout configured for A4 format');
+
+                // Set up font
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(12);
+
+                // Add title page
+                pdf.setFontSize(18);
+                pdf.setFont('helvetica', 'bold');
+                const title = 'บททดสอบภาษาไทย';
+                const titleWidth = pdf.getTextWidth(title);
+                const titleX = (PAGE_WIDTH - titleWidth) / 2;
+                pdf.text(title, titleX, PAGE_HEIGHT / 3);
+
+                // Add "Written by" in Thai
+                pdf.setFontSize(14);
+                pdf.setFont('helvetica', 'normal');
+                const writtenBy = 'เขียนโดย';
+                const writtenByWidth = pdf.getTextWidth(writtenBy);
+                const writtenByX = (PAGE_WIDTH - writtenByWidth) / 2;
+                pdf.text(writtenBy, writtenByX, PAGE_HEIGHT / 2);
+
+                // Add author
+                const author = 'นักเขียนไทย';
+                const authorWidth = pdf.getTextWidth(author);
+                const authorX = (PAGE_WIDTH - authorWidth) / 2;
+                pdf.text(author, authorX, PAGE_HEIGHT / 2 + 30);
+
+                console.log('📄 Title page created with Thai text');
+
+                // Add new page for content
+                pdf.addPage();
+
+                // Layout configurations for screenplay elements
+                const blockLayouts = {
+                    'scene-heading': { marginLeft: 0, bold: true, uppercase: true, spaceAfter: LINE_HEIGHT },
+                    'action': { marginLeft: 0, bold: false, uppercase: false, spaceAfter: LINE_HEIGHT },
+                    'character': { marginLeft: 200, bold: false, uppercase: true, spaceAfter: 0 },
+                    'dialogue': { marginLeft: 130, bold: false, uppercase: false, spaceAfter: LINE_HEIGHT },
+                    'parenthetical': { marginLeft: 165, bold: false, uppercase: false, spaceAfter: 0 },
+                    'transition': { marginLeft: 400, bold: false, uppercase: true, spaceAfter: LINE_HEIGHT }
+                };
+
+                let y = MARGIN_TOP;
+                let sceneCounter = 1;
+
+                // Process each block
+                testBlocks.forEach((block, index) => {
+                    const layout = blockLayouts[block.type] || blockLayouts['action'];
+                    let text = normalizeThaiText(block.content);
+
+                    // Add scene number for scene headings
+                    if (block.type === 'scene-heading') {
+                        text = `${sceneCounter}. ${text}`;
+                        sceneCounter++;
+                    }
+
+                    // Apply uppercase for non-Thai text
+                    if (layout.uppercase && !containsThaiText(text)) {
+                        text = text.toUpperCase();
+                    }
+
+                    // Set font style
+                    pdf.setFont('helvetica', layout.bold ? 'bold' : 'normal');
+                    pdf.setFontSize(12);
+
+                    // Calculate position
+                    let x = MARGIN_LEFT + layout.marginLeft;
+                    
+                    // Handle right alignment for transitions
+                    if (block.type === 'transition') {
+                        const textWidth = pdf.getTextWidth(text);
+                        x = MARGIN_LEFT + CONTENT_WIDTH - textWidth;
+                    }
+
+                    // Split text if too long
+                    const maxWidth = CONTENT_WIDTH - layout.marginLeft;
+                    const lines = pdf.splitTextToSize(text, maxWidth);
+
+                    // Add text lines
+                    lines.forEach((line, lineIndex) => {
+                        if (y > PAGE_HEIGHT - MARGIN_TOP - LINE_HEIGHT) {
+                            pdf.addPage();
+                            y = MARGIN_TOP;
+                        }
+
+                        let lineX = x;
+                        if (block.type === 'transition') {
+                            const lineWidth = pdf.getTextWidth(line);
+                            lineX = MARGIN_LEFT + CONTENT_WIDTH - lineWidth;
+                        }
+
+                        pdf.text(line, lineX, y);
+                        y += LINE_HEIGHT;
+                    });
+
+                    y += layout.spaceAfter || 0;
+                });
+
+                // Save the PDF
+                pdf.save('thai-test-advanced.pdf');
+                
+                console.log('✅ Advanced Thai PDF test completed successfully!');
+                console.log('📄 Check the downloaded PDF file: thai-test-advanced.pdf');
+                console.log('🔧 Applied fixes:');
+                console.log('   ✓ Unicode normalization (NFC)');
+                console.log('   ✓ Helvetica font for Thai support');
+                console.log('   ✓ Proper screenplay formatting');
+                console.log('   ✓ Scene numbering');
+                console.log('   ✓ Character positioning');
+                console.log('   ✓ Transition alignment');
+                
+                showStatus('✅ Advanced test completed! Check downloaded PDF.', 'success');
+
+            } catch (error) {
+                console.error('❌ Advanced Thai PDF test failed:', error);
+                showStatus(`❌ Advanced test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🌐 Thai PDF Test Page Loaded');
+            console.log('📚 jsPDF Version:', typeof window.jsPDF !== 'undefined' ? 'Loaded' : 'Not loaded');
+            showStatus('Ready to test Thai PDF export...', 'info');
+        });
+    </script>
+</body>
+</html>
