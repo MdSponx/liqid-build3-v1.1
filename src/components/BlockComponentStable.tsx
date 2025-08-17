@@ -245,7 +245,7 @@ const BlockComponentStable: React.FC<ExtendedBlockComponentProps> = ({
     }
   }, [moveCursorOutsideHighlight]);
 
-  // CURSOR JUMPING FIX: Enhanced input handling with cursor fix and dynamic offset adjustment
+  // CURSOR JUMPING FIX: Enhanced input handling with cursor fix
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
     if (!contentElement) return;
     
@@ -258,9 +258,9 @@ const BlockComponentStable: React.FC<ExtendedBlockComponentProps> = ({
       timestamp: Date.now()
     };
 
-    // Apply dynamic highlight adjustment after input
+    // Apply highlight preservation after input
     setTimeout(() => {
-      applyDynamicHighlightAdjustment();
+      applyHighlightPreservation();
     }, 0);
     
     // Don't open suggestions if just closed or if scene selection is active
@@ -295,131 +295,16 @@ const BlockComponentStable: React.FC<ExtendedBlockComponentProps> = ({
     }
   }, [block.type, block.id, updateSuggestionsPosition, contentElement, isCharacterBlockAfterDialogue, isSceneSelectionActive]);
 
-  // CURSOR JUMPING FIX: Dynamic highlight adjustment with offset recalculation
-  const applyDynamicHighlightAdjustment = useCallback(() => {
-    if (!contentElement || !comments) return;
-
-    // Get all comments for this block
-    const blockComments = comments.filter(c => c.blockId === block.id);
-    if (blockComments.length === 0) return;
-
-    const currentText = contentElement.textContent || '';
-    
-    // Store current cursor position
-    const selection = window.getSelection();
-    let cursorPosition = 0;
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      cursorPosition = range.startOffset;
-    }
-
-    // Clear existing highlights and collect their text content
-    const existingHighlights = contentElement.querySelectorAll('.comment-highlight');
-    const highlightTexts: Array<{ commentId: string; text: string; originalStart: number; originalEnd: number }> = [];
-    
-    existingHighlights.forEach(el => {
-      const commentIds = el.dataset.commentIds?.split(',') || [];
-      const text = el.textContent || '';
-      
-      // Find the original comment data
-      commentIds.forEach(commentId => {
-        const comment = blockComments.find(c => c.id === commentId);
-        if (comment && comment.startOffset !== undefined && comment.endOffset !== undefined) {
-          highlightTexts.push({
-            commentId,
-            text,
-            originalStart: comment.startOffset,
-            originalEnd: comment.endOffset
-          });
-        }
-      });
-      
-      // Replace highlight with plain text
-      const parent = el.parentNode;
-      if (parent) {
-        parent.replaceChild(document.createTextNode(text), el);
-        parent.normalize();
-      }
-    });
-
-    // Recalculate offsets for each comment based on current text content
-    const updatedComments = blockComments.map(comment => {
-      if (comment.startOffset === undefined || comment.endOffset === undefined) {
-        return comment;
-      }
-
-      const highlightInfo = highlightTexts.find(h => h.commentId === comment.id);
-      if (!highlightInfo) return comment;
-
-      // Find the highlighted text in the current content
-      const highlightedText = comment.highlightedText || highlightInfo.text;
-      const newStartIndex = currentText.indexOf(highlightedText);
-      
-      if (newStartIndex !== -1) {
-        // Update the comment offsets to match current text position
-        return {
-          ...comment,
-          startOffset: newStartIndex,
-          endOffset: newStartIndex + highlightedText.length
-        };
-      }
-
-      // If exact text not found, try to find the best match
-      const words = highlightedText.split(/\s+/);
-      if (words.length > 1) {
-        // Try to find the first few words
-        const partialText = words.slice(0, Math.min(3, words.length)).join(' ');
-        const partialIndex = currentText.indexOf(partialText);
-        
-        if (partialIndex !== -1) {
-          return {
-            ...comment,
-            startOffset: partialIndex,
-            endOffset: Math.min(partialIndex + highlightedText.length, currentText.length)
-          };
-        }
-      }
-
-      // Fallback: keep original offsets but ensure they're within bounds
-      return {
-        ...comment,
-        startOffset: Math.min(comment.startOffset, currentText.length),
-        endOffset: Math.min(comment.endOffset, currentText.length)
-      };
-    });
-
-    // Reapply highlights with updated offsets
-    try {
-      applyAllCommentHighlights(updatedComments);
-      
-      // Restore cursor position
-      if (selection && cursorPosition > 0) {
-        setTimeout(() => {
-          const textNode = contentElement.firstChild;
-          if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-            const range = document.createRange();
-            const safePosition = Math.min(cursorPosition, textNode.textContent?.length || 0);
-            range.setStart(textNode, safePosition);
-            range.setEnd(textNode, safePosition);
-            selection.removeAllRanges();
-            selection.addRange(range);
-          }
-        }, 0);
-      }
-      
-      console.log('🔧 Dynamic highlight adjustment applied');
-    } catch (e) {
-      console.error('Error applying dynamic highlight adjustment:', e);
-    }
-  }, [contentElement, comments, block.id]);
-
-  // CURSOR JUMPING FIX: Preserve highlights after content changes (legacy method)
+  // CURSOR JUMPING FIX: Preserve highlights after content changes (only for unresolved comments)
   const applyHighlightPreservation = useCallback(() => {
     if (!contentElement || !comments) return;
 
     // Get all comments for this block
     const blockComments = comments.filter(c => c.blockId === block.id);
-    if (blockComments.length === 0) return;
+    
+    // Filter out resolved comments - only preserve highlights for unresolved comments
+    const unresolvedComments = blockComments.filter(c => !c.isResolved);
+    if (unresolvedComments.length === 0) return;
 
     // Clear existing highlights first
     const existingHighlights = contentElement.querySelectorAll('.comment-highlight');
@@ -431,9 +316,9 @@ const BlockComponentStable: React.FC<ExtendedBlockComponentProps> = ({
       }
     });
 
-    // Reapply highlights
+    // Reapply highlights only for unresolved comments
     try {
-      applyAllCommentHighlights(blockComments);
+      applyAllCommentHighlights(unresolvedComments);
     } catch (e) {
       console.error('Error preserving highlights:', e);
     }
@@ -824,12 +709,15 @@ const BlockComponentStable: React.FC<ExtendedBlockComponentProps> = ({
     };
   }, [contentElement, handleBeforeInput]);
 
-  // Effect to handle persistent text highlighting for ALL comments on this block
+  // Effect to handle persistent text highlighting for UNRESOLVED comments on this block
   useEffect(() => {
     if (!contentElement) return;
     
     // Get all comments for this block
     const blockComments = comments?.filter(c => c.blockId === block.id) || [];
+    
+    // Filter out resolved comments - only show highlights for unresolved comments
+    const unresolvedComments = blockComments.filter(c => !c.isResolved);
     
     // Clear any existing highlights first
     const existingHighlights = contentElement.querySelectorAll('.comment-highlight');
@@ -843,12 +731,12 @@ const BlockComponentStable: React.FC<ExtendedBlockComponentProps> = ({
       }
     });
     
-    // If no comments, nothing to highlight
-    if (blockComments.length === 0) return;
+    // If no unresolved comments, nothing to highlight
+    if (unresolvedComments.length === 0) return;
     
-    // Apply highlights for all comments
+    // Apply highlights only for unresolved comments
     try {
-      applyAllCommentHighlights(blockComments);
+      applyAllCommentHighlights(unresolvedComments);
     } catch (e) {
       console.error('Error applying comment highlights:', e);
     }
@@ -868,51 +756,127 @@ const BlockComponentStable: React.FC<ExtendedBlockComponentProps> = ({
     };
   }, [block.id, contentElement, comments, activeCommentId]);
 
-  // Function to apply highlights for all comments with blending support and cursor jumping fix
+  // Enhanced function to apply highlights based on actual text content (sticky to words)
   const applyAllCommentHighlights = useCallback((blockComments: Comment[]) => {
     if (!contentElement || blockComments.length === 0) return;
     
-    // Get the text content
-    const textContent = contentElement.textContent || '';
-    if (!textContent) return;
+    // Get the current text content
+    const currentTextContent = contentElement.textContent || '';
+    if (!currentTextContent) return;
     
-    // Create highlight ranges with overlap detection
+    // Create highlight ranges based on actual text matching (content-based, not position-based)
     const highlightRanges: Array<{
       start: number;
       end: number;
       commentIds: string[];
       comments: Comment[];
+      matchedText: string;
     }> = [];
     
-    // Process each comment to create ranges
+    // Process each comment to find its current position in the text
     blockComments.forEach(comment => {
-      if (comment.startOffset !== undefined && comment.endOffset !== undefined) {
-        // Check if this range overlaps with existing ranges
-        let merged = false;
+      if (comment.highlightedText && comment.highlightedText.trim()) {
+        // Find the highlighted text in the current content
+        const highlightedText = comment.highlightedText;
+        let searchStartIndex = 0;
+        let foundIndex = -1;
         
-        for (let i = 0; i < highlightRanges.length; i++) {
-          const existing = highlightRanges[i];
-          
-          // Check for overlap
-          if (comment.startOffset < existing.end && comment.endOffset > existing.start) {
-            // Merge overlapping ranges
-            existing.start = Math.min(existing.start, comment.startOffset);
-            existing.end = Math.max(existing.end, comment.endOffset);
-            existing.commentIds.push(comment.id);
-            existing.comments.push(comment);
-            merged = true;
-            break;
-          }
+        // Handle multiple occurrences by using stored offset as a hint
+        const originalOffset = comment.startOffset || 0;
+        
+        // First, try to find the text near its original position
+        const searchRadius = 50; // Search within 50 characters of original position
+        const searchStart = Math.max(0, originalOffset - searchRadius);
+        const searchEnd = Math.min(currentTextContent.length, originalOffset + highlightedText.length + searchRadius);
+        const nearbyText = currentTextContent.substring(searchStart, searchEnd);
+        
+        let localIndex = nearbyText.indexOf(highlightedText);
+        if (localIndex !== -1) {
+          foundIndex = searchStart + localIndex;
+        } else {
+          // Fallback: search the entire text
+          foundIndex = currentTextContent.indexOf(highlightedText, searchStartIndex);
         }
         
-        // If not merged, create new range
-        if (!merged) {
-          highlightRanges.push({
-            start: comment.startOffset,
-            end: comment.endOffset,
-            commentIds: [comment.id],
-            comments: [comment]
-          });
+        // If we found the text, create a highlight range
+        if (foundIndex !== -1) {
+          const start = foundIndex;
+          const end = foundIndex + highlightedText.length;
+          
+          // Check if this range overlaps with existing ranges
+          let merged = false;
+          
+          for (let i = 0; i < highlightRanges.length; i++) {
+            const existing = highlightRanges[i];
+            
+            // Check for overlap
+            if (start < existing.end && end > existing.start) {
+              // Merge overlapping ranges
+              existing.start = Math.min(existing.start, start);
+              existing.end = Math.max(existing.end, end);
+              existing.commentIds.push(comment.id);
+              existing.comments.push(comment);
+              // Update matched text to include both
+              const mergedStart = existing.start;
+              const mergedEnd = existing.end;
+              existing.matchedText = currentTextContent.substring(mergedStart, mergedEnd);
+              merged = true;
+              break;
+            }
+          }
+          
+          // If not merged, create new range
+          if (!merged) {
+            highlightRanges.push({
+              start,
+              end,
+              commentIds: [comment.id],
+              comments: [comment],
+              matchedText: highlightedText
+            });
+          }
+          
+          // Update the comment's stored offsets to the new position
+          comment.startOffset = start;
+          comment.endOffset = end;
+        } else {
+          // Text not found - might have been deleted or significantly modified
+          console.warn(`Comment highlight text not found: "${highlightedText}"`);
+        }
+      } else if (comment.startOffset !== undefined && comment.endOffset !== undefined) {
+        // Fallback to position-based highlighting for comments without stored text
+        const start = Math.min(comment.startOffset, currentTextContent.length);
+        const end = Math.min(comment.endOffset, currentTextContent.length);
+        
+        if (start < end && start >= 0) {
+          const matchedText = currentTextContent.substring(start, end);
+          
+          // Check for overlap with existing ranges
+          let merged = false;
+          
+          for (let i = 0; i < highlightRanges.length; i++) {
+            const existing = highlightRanges[i];
+            
+            if (start < existing.end && end > existing.start) {
+              existing.start = Math.min(existing.start, start);
+              existing.end = Math.max(existing.end, end);
+              existing.commentIds.push(comment.id);
+              existing.comments.push(comment);
+              existing.matchedText = currentTextContent.substring(existing.start, existing.end);
+              merged = true;
+              break;
+            }
+          }
+          
+          if (!merged) {
+            highlightRanges.push({
+              start,
+              end,
+              commentIds: [comment.id],
+              comments: [comment],
+              matchedText
+            });
+          }
         }
       }
     });
@@ -924,7 +888,7 @@ const BlockComponentStable: React.FC<ExtendedBlockComponentProps> = ({
     let textNode = contentElement.firstChild;
     if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
       // Create a text node if it doesn't exist
-      textNode = document.createTextNode(textContent);
+      textNode = document.createTextNode(currentTextContent);
       contentElement.innerHTML = '';
       contentElement.appendChild(textNode);
     }

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Comment, CommentReaction, UserMention, EmojiReaction } from '../../types';
-import { MessageSquare, Check, X, MoreVertical, Smile, MessageCircle, Users } from 'lucide-react';
+import { MessageSquare, Check, X, MoreVertical, Smile, MessageCircle, Users, Trash2 } from 'lucide-react';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 interface CommentCardProps {
   comment: Comment;
   onResolve: (commentId: string, isResolved: boolean) => void;
+  onDeleteComment?: (commentId: string) => Promise<boolean>;
   isActive: boolean;
   onReply?: (commentId: string, replyText: string) => Promise<boolean>;
   onAddReaction?: (commentId: string, emoji: string) => Promise<boolean>;
@@ -32,6 +33,7 @@ interface UserProfile {
 const CommentCard: React.FC<CommentCardProps> = ({ 
   comment, 
   onResolve, 
+  onDeleteComment,
   isActive,
   onReply,
   onAddReaction,
@@ -61,9 +63,11 @@ const CommentCard: React.FC<CommentCardProps> = ({
   const [mentionedUsersData, setMentionedUsersData] = useState<UserMention[]>([]);
   const [showReactionsTooltip, setShowReactionsTooltip] = useState<string | null>(null);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const moreOptionsRef = useRef<HTMLDivElement>(null);
 
   // Common emojis for quick selection
   const commonEmojis = ['👍', '👎', '❤️', '😂', '😮', '🎉', '👏', '🤔'];
@@ -122,11 +126,14 @@ const CommentCard: React.FC<CommentCardProps> = ({
     fetchMentionedUsers();
   }, [comment.authorId, comment.mentions]);
 
-  // Close emoji picker when clicking outside
+  // Close emoji picker and more options when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
         setShowEmojiPicker(false);
+      }
+      if (moreOptionsRef.current && !moreOptionsRef.current.contains(event.target as Node)) {
+        setShowMoreOptions(false);
       }
     };
 
@@ -414,13 +421,59 @@ const CommentCard: React.FC<CommentCardProps> = ({
               )}
             </button>
             
-            {/* More options button */}
-            <button
-              className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              title="More options"
-            >
-              <MoreVertical size={compactMode ? 16 : 18} />
-            </button>
+            {/* More options button with dropdown */}
+            <div className="relative" ref={moreOptionsRef}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMoreOptions(!showMoreOptions);
+                }}
+                className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="More options"
+              >
+                <MoreVertical size={compactMode ? 16 : 18} />
+              </button>
+              
+              {/* Dropdown menu */}
+              {showMoreOptions && (
+                <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20 min-w-[140px]">
+                  {/* Copy link option */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMoreOptions(false);
+                      // Copy comment link to clipboard (placeholder functionality)
+                      navigator.clipboard.writeText(`#comment-${comment.id}`);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center"
+                  >
+                    <MessageSquare size={14} className="mr-2" />
+                    Copy link
+                  </button>
+                  
+                  {/* Delete option - show if onDeleteComment is provided */}
+                  {onDeleteComment && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        setShowMoreOptions(false);
+                        if (window.confirm('Are you sure you want to delete this comment?')) {
+                          try {
+                            await onDeleteComment(comment.id);
+                          } catch (error) {
+                            console.error('Error deleting comment:', error);
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center"
+                    >
+                      <Trash2 size={14} className="mr-2" />
+                      Delete comment
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         

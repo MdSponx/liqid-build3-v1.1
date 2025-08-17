@@ -647,6 +647,18 @@ body {
   -ms-user-select: none;
 }
 
+/* Resolved comment highlights (when they do appear, e.g., in tooltips) */
+.comment-highlight.resolved {
+  background-color: rgba(156, 163, 175, 0.2);
+  border-bottom: 1px solid rgba(156, 163, 175, 0.5);
+  opacity: 0.6;
+}
+
+.dark .comment-highlight.resolved {
+  background-color: rgba(156, 163, 175, 0.3);
+  border-bottom: 1px solid rgba(156, 163, 175, 0.6);
+}
+
 /* Cursor jumping fix: Special data attribute for enhanced behavior */
 .comment-highlight[data-cursor-fix="true"] {
   /* Ensure proper text flow around highlights */

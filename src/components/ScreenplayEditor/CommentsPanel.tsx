@@ -9,6 +9,7 @@ interface CommentsPanelProps {
   activeBlock: string | null;
   activeCommentId: string | null;
   onResolveComment: (commentId: string, isResolved: boolean) => void;
+  onDeleteComment?: (commentId: string) => Promise<boolean>;
   onCommentSelect: (comment: Comment) => void;
   commentCardRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
   blockPositions: Record<string, number>;
@@ -29,6 +30,7 @@ const CommentsPanel = forwardRef<HTMLDivElement, CommentsPanelProps>(({
   activeBlock,
   activeCommentId,
   onResolveComment,
+  onDeleteComment,
   onCommentSelect,
   commentCardRefs,
   blockPositions,
@@ -230,6 +232,7 @@ const CommentsPanel = forwardRef<HTMLDivElement, CommentsPanelProps>(({
                   <CommentCard
                     comment={comment}
                     onResolve={onResolveComment}
+                    onDeleteComment={onDeleteComment}
                     isActive={comment.id === activeCommentId}
                     onReply={onReplyToComment}
                     onToggleEmojiReaction={onToggleEmojiReaction}

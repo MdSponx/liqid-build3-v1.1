@@ -504,6 +504,36 @@ const ScreenplayEditor: React.FC = () => {
     }
   }, [projectId, screenplayId, user, toggleEmojiReaction]);
 
+  // Handle deleting a comment
+  const handleDeleteComment = useCallback(async (commentId: string): Promise<boolean> => {
+    if (!projectId || !screenplayId || !user?.id) {
+      console.error('Cannot delete comment: Missing project ID, screenplay ID, or user ID');
+      return false;
+    }
+
+    try {
+      // Delete the comment document from Firestore
+      const commentRef = doc(db, `projects/${projectId}/screenplays/${screenplayId}/comments`, commentId);
+      await updateDoc(commentRef, {
+        isDeleted: true,
+        deletedAt: serverTimestamp(),
+        deletedBy: user.id
+      });
+
+      // Remove the comment from local state
+      setState(prev => ({
+        ...prev,
+        comments: prev.comments.filter(comment => comment.id !== commentId)
+      }));
+
+      console.log(`Comment ${commentId} deleted successfully`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      return false;
+    }
+  }, [projectId, screenplayId, user, setState]);
+
   // Handle user mention search
   const handleMentionUser = useCallback(async (searchTerm: string): Promise<UserMention[]> => {
     if (!searchTerm || searchTerm.length < 2) return [];
@@ -1277,6 +1307,7 @@ const ScreenplayEditor: React.FC = () => {
                     resolveComment(commentId, isResolved);
                   }
                 }}
+                onDeleteComment={handleDeleteComment}
                 onCommentSelect={handleCommentSelect}
                 commentCardRefs={commentCardRefs}
                 blockPositions={blockPositions}
