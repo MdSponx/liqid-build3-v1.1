@@ -292,7 +292,7 @@ const BlockComponentImproved: React.FC<ExtendedBlockComponentProps> = ({
                              /^(INT\.|EXT\.|INT\.\/EXT\.|EXT\.\/INT\.|I\/E\.)\s?$/i.test(value.trim());
     
     // OPTIMISTIC UPDATE: Update content immediately
-    onContentChange(block.id, value);
+    onContentChange(block.id, value, block.type);
     
     // For prefix-only selections, keep suggestions open and maintain focus
     if (isSceneTypePrefix) {
@@ -434,419 +434,17 @@ const BlockComponentImproved: React.FC<ExtendedBlockComponentProps> = ({
     }
   }, [showSuggestions, isProcessingSuggestion, onKeyDown, block.id, updateSuggestionsPosition]);
 
-  // Add Comment Offset Update Function - MOVED BEFORE USE
-  const updateCommentOffsetsAfterEdit = useCallback((blockComments: Comment[], newContent: string) => {
-    blockComments.forEach(comment => {
-      if (comment.highlightedText && comment.startOffset !== undefined && comment.endOffset !== undefined) {
-        // Find new position of highlighted text in new content
-        const highlightedText = comment.highlightedText;
-        const newStartIndex = newContent.indexOf(highlightedText);
-        
-        if (newStartIndex !== -1) {
-          // Update offsets
-          comment.startOffset = newStartIndex;
-          comment.endOffset = newStartIndex + highlightedText.length;
-        } else {
-          // If text not found, mark comment as potentially outdated
-          console.warn('Comment text not found in updated content:', highlightedText);
-        }
-      }
-    });
-  }, []);
-
-  // Handle highlight hover to show tooltip - MOVED BEFORE USE
-  const handleHighlightHover = useCallback((e: MouseEvent, hoverComments: Comment[]) => {
-    // Clear any existing timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-
-    // Set a timeout to show tooltip after 300ms (debounced)
-    hoverTimeoutRef.current = setTimeout(() => {
-      const rect = (e.target as HTMLElement).getBoundingClientRect();
-      setTooltipState({
-        visible: true,
-        position: {
-          x: rect.left + rect.width / 2,
-          y: rect.top
-        },
-        comments: hoverComments
-      });
-    }, 300);
-  }, []);
-
-  // Handle highlight leave to hide tooltip - MOVED BEFORE USE
-  const handleHighlightLeave = useCallback(() => {
-    // Clear any pending timeout
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-
-    // Hide tooltip immediately
-    setTooltipState(prev => ({
-      ...prev,
-      visible: false
-    }));
-  }, []);
-
-  // Handle highlight click to open comments panel and scroll to comment - MOVED BEFORE USE
-  const handleHighlightClick = useCallback((commentId: string) => {
-    // Open comments panel immediately if not already open
-    if (setShowCommentsPanel && !showCommentsPanel) {
-      setShowCommentsPanel(true);
-    }
-    
-    // Find the comment and trigger the selection handler
-    const comment = comments?.find(c => c.id === commentId);
-    if (comment && onCommentSelect) {
-      // If panel was just opened, add a small delay to ensure comment card is rendered
-      if (!showCommentsPanel) {
-        setTimeout(() => {
-          onCommentSelect(comment);
-        }, 100);
-      } else {
-        // Panel was already open, select immediately
-        onCommentSelect(comment);
-      }
-    }
-  }, [comments, onCommentSelect, setShowCommentsPanel, showCommentsPanel]);
-
-  // Enhanced applyAllCommentHighlights with Cursor Preservation
-  const applyAllCommentHighlights = useCallback((blockComments: Comment[]) => {
-    if (!contentElement || blockComments.length === 0) return;
-    
-    const textContent = contentElement.textContent || '';
-    if (!textContent) return;
-    
-    // Save cursor position before highlighting
-    const selection = window.getSelection();
-    let savedCursorOffset = 0;
-    
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const preCaretRange = document.createRange();
-      preCaretRange.setStart(contentElement, 0);
-      preCaretRange.setEnd(range.startContainer, range.startOffset);
-      savedCursorOffset = preCaretRange.toString().length;
-    }
-    
-    // Clear existing highlights first
-    const existingHighlights = contentElement.querySelectorAll('.comment-highlight');
-    existingHighlights.forEach(el => {
-      const parent = el.parentNode;
-      if (parent) {
-        parent.replaceChild(document.createTextNode(el.textContent || ''), el);
-        parent.normalize();
-      }
-    });
-    
-    // Create highlight ranges
-    const highlightRanges: Array<{
-      start: number;
-      end: number;
-      commentIds: string[];
-      comments: Comment[];
-    }> = [];
-    
-    blockComments.forEach(comment => {
-      if (comment.startOffset !== undefined && comment.endOffset !== undefined) {
-        if (comment.startOffset >= 0 && comment.endOffset <= textContent.length && comment.startOffset < comment.endOffset) {
-          let merged = false;
-          
-          for (let i = 0; i < highlightRanges.length; i++) {
-            const existing = highlightRanges[i];
-            
-            if (comment.startOffset < existing.end && comment.endOffset > existing.start) {
-              existing.start = Math.min(existing.start, comment.startOffset);
-              existing.end = Math.max(existing.end, comment.endOffset);
-              existing.commentIds.push(comment.id);
-              existing.comments.push(comment);
-              merged = true;
-              break;
-            }
-          }
-          
-          if (!merged) {
-            highlightRanges.push({
-              start: comment.startOffset,
-              end: comment.endOffset,
-              commentIds: [comment.id],
-              comments: [comment]
-            });
-          }
-        }
-      }
-    });
-    
-    // Sort ranges by start position (reverse order)
-    highlightRanges.sort((a, b) => b.start - a.start);
-    
-    // Apply highlights
-    let textNode = contentElement.firstChild;
-    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
-      textNode = document.createTextNode(textContent);
-      contentElement.innerHTML = '';
-      contentElement.appendChild(textNode);
-    }
-    
-    highlightRanges.forEach(range => {
-      try {
-        const domRange = document.createRange();
-        domRange.setStart(textNode!, range.start);
-        domRange.setEnd(textNode!, range.end);
-        
-        const span = document.createElement('span');
-        span.className = `comment-highlight ${range.comments.length > 1 ? `overlap-${Math.min(range.comments.length - 1, 3)}` : ''}`;
-        span.dataset.commentIds = range.commentIds.join(',');
-        
-        span.addEventListener('mouseenter', (e) => handleHighlightHover(e, range.comments));
-        span.addEventListener('mouseleave', handleHighlightLeave);
-        span.addEventListener('click', (e) => {
-          e.stopPropagation();
-          handleHighlightClick(range.commentIds[0]);
-        });
-        
-        domRange.surroundContents(span);
-      } catch (e) {
-        console.error('Error applying highlight for range:', range, e);
-      }
-    });
-    
-    // Restore cursor position after highlighting
-    setTimeout(() => {
-      if (selection) {
-        try {
-          const currentTextContent = contentElement.textContent || '';
-          const validOffset = Math.min(savedCursorOffset, currentTextContent.length);
-          
-          // Find new text node
-          const walker = document.createTreeWalker(
-            contentElement,
-            NodeFilter.SHOW_TEXT,
-            null
-          );
-          
-          let currentOffset = 0;
-          let targetNode: Text | null = null;
-          let targetOffset = 0;
-          
-          let node = walker.nextNode();
-          while (node) {
-            const nodeLength = node.textContent?.length || 0;
-            
-            if (currentOffset + nodeLength >= validOffset) {
-              targetNode = node as Text;
-              targetOffset = validOffset - currentOffset;
-              break;
-            }
-            currentOffset += nodeLength;
-            node = walker.nextNode();
-          }
-          
-          if (targetNode) {
-            const range = document.createRange();
-            const safeOffset = Math.min(targetOffset, targetNode.textContent?.length || 0);
-            
-            range.setStart(targetNode, safeOffset);
-            range.setEnd(targetNode, safeOffset);
-            selection.removeAllRanges();
-            selection.addRange(range);
-          }
-        } catch (error) {
-          console.error('Error restoring cursor after highlighting:', error);
-        }
-      }
-    }, 0);
-  }, [contentElement, handleHighlightHover, handleHighlightLeave, handleHighlightClick]);
-
-  // Simplified cursor position preservation function
-  const preserveCursorPosition = useCallback((beforeUpdate: () => number, afterUpdate: () => void) => {
-    const cursorOffset = beforeUpdate();
-    
-    // Call update function
-    afterUpdate();
-    
-    // Use longer timeout for DOM stabilization
-    setTimeout(() => {
-      if (contentElement) {
-        const selection = window.getSelection();
-        if (selection) {
-          try {
-            // Get all text content in element
-            const textContent = contentElement.textContent || '';
-            
-            // Ensure cursor offset is still valid
-            const validOffset = Math.min(cursorOffset, textContent.length);
-            
-            // Find text nodes at target position
-            const textNodes: Text[] = [];
-            const walker = document.createTreeWalker(
-              contentElement,
-              NodeFilter.SHOW_TEXT,
-              null
-            );
-            
-            let currentNode = walker.nextNode();
-            while (currentNode) {
-              textNodes.push(currentNode as Text);
-              currentNode = walker.nextNode();
-            }
-            
-            if (textNodes.length === 0) {
-              // If no text nodes, create new one
-              const newTextNode = document.createTextNode(textContent);
-              contentElement.innerHTML = '';
-              contentElement.appendChild(newTextNode);
-              textNodes.push(newTextNode);
-            }
-            
-            // Calculate position within text nodes
-            let currentOffset = 0;
-            let targetNode: Text | null = null;
-            let targetOffset = 0;
-            
-            for (const node of textNodes) {
-              const nodeLength = node.textContent?.length || 0;
-              
-              if (currentOffset + nodeLength >= validOffset) {
-                targetNode = node;
-                targetOffset = validOffset - currentOffset;
-                break;
-              }
-              currentOffset += nodeLength;
-            }
-            
-            // If target node not found, use last node
-            if (!targetNode && textNodes.length > 0) {
-              targetNode = textNodes[textNodes.length - 1];
-              targetOffset = targetNode.textContent?.length || 0;
-            }
-            
-            if (targetNode) {
-              const range = document.createRange();
-              
-              // Ensure targetOffset is valid
-              const maxOffset = targetNode.textContent?.length || 0;
-              const safeOffset = Math.min(targetOffset, maxOffset);
-              
-              range.setStart(targetNode, safeOffset);
-              range.setEnd(targetNode, safeOffset);
-              
-              selection.removeAllRanges();
-              selection.addRange(range);
-              
-              console.log(`Cursor restored to offset: ${validOffset} (node offset: ${safeOffset})`);
-            }
-          } catch (error) {
-            console.error('Error restoring cursor position:', error);
-            // Fallback: place cursor at end of text
-            try {
-              const range = document.createRange();
-              const textContent = contentElement.textContent || '';
-              
-              if (contentElement.firstChild) {
-                range.setStart(contentElement.firstChild, textContent.length);
-                range.setEnd(contentElement.firstChild, textContent.length);
-              } else {
-                const textNode = document.createTextNode(textContent);
-                contentElement.appendChild(textNode);
-                range.setStart(textNode, textContent.length);
-                range.setEnd(textNode, textContent.length);
-              }
-              
-              selection.removeAllRanges();
-              selection.addRange(range);
-            } catch (fallbackError) {
-              console.error('Fallback cursor positioning failed:', fallbackError);
-            }
-          }
-        }
-      }
-    }, 50); // Increased delay to 50ms
-  }, [contentElement]);
-
-  // Simplified handleInput function
+  // Enhanced input handling - Fixed to use contentElement ref instead of event target
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+    // Add null check for contentElement before accessing textContent
     if (!contentElement) {
       return;
     }
     
-    // Simple function to get cursor position
-    const getCursorPosition = () => {
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0) return 0;
-      
-      const range = selection.getRangeAt(0);
-      
-      // Create range from start of element to cursor position
-      const preCaretRange = document.createRange();
-      preCaretRange.setStart(contentElement, 0);
-      preCaretRange.setEnd(range.startContainer, range.startOffset);
-      
-      // Use toString() to get text length before cursor
-      return preCaretRange.toString().length;
-    };
-    
-    // Check if typing is happening inside a comment highlight
-    const selection = window.getSelection();
-    const isTypingInHighlight = selection && 
-      selection.rangeCount > 0 && 
-      (selection.getRangeAt(0).startContainer.parentElement?.classList.contains('comment-highlight') ||
-       selection.getRangeAt(0).startContainer.parentNode?.parentElement?.classList.contains('comment-highlight'));
-    
-    if (isTypingInHighlight) {
-      console.log('Detected typing in highlight, cleaning up...');
-      
-      // Use simpler approach: save offset before, restore after
-      const cursorOffset = getCursorPosition();
-      const content = contentElement.textContent || '';
-      
-      // Remove highlights and create new DOM
-      contentElement.innerHTML = '';
-      const newTextNode = document.createTextNode(content);
-      contentElement.appendChild(newTextNode);
-      
-      // Restore cursor position immediately
-      setTimeout(() => {
-        const selection = window.getSelection();
-        if (selection && newTextNode) {
-          const validOffset = Math.min(cursorOffset, content.length);
-          const range = document.createRange();
-          
-          try {
-            range.setStart(newTextNode, validOffset);
-            range.setEnd(newTextNode, validOffset);
-            selection.removeAllRanges();
-            selection.addRange(range);
-            
-            console.log(`Cursor restored to position: ${validOffset}`);
-          } catch (error) {
-            console.error('Error setting cursor position:', error);
-            // Fallback: place at end of text
-            range.setStart(newTextNode, content.length);
-            range.setEnd(newTextNode, content.length);
-            selection.removeAllRanges();
-            selection.addRange(range);
-          }
-        }
-        
-        // Re-apply highlights after cursor restoration
-        setTimeout(() => {
-          const blockComments = comments?.filter(c => c.blockId === block.id) || [];
-          if (blockComments.length > 0) {
-            updateCommentOffsetsAfterEdit(blockComments, content);
-            applyAllCommentHighlights(blockComments);
-          }
-        }, 10);
-      }, 10);
-    }
-    
     const content = contentElement.textContent || '';
     setCurrentInput(content);
-    onContentChange(block.id, content);
     
-    // Original suggestion logic remains the same...
+    // Don't open suggestions if just closed or if scene selection is active
     if (suggestionClosingRef.current || isSceneSelectionActive) return;
     
     if (block.type === 'scene-heading') {
@@ -862,33 +460,25 @@ const BlockComponentImproved: React.FC<ExtendedBlockComponentProps> = ({
       setSuggestionType('shot');
       setShowSuggestions(true);
     } else if (block.type === 'character') {
+      // NEW BEHAVIOR: For character blocks created after dialogue, show suggestions when user starts typing
       const isAfterDialogue = isCharacterBlockAfterDialogue?.(block.id) ?? false;
       
       if (isAfterDialogue && content.trim().length > 0) {
+        // User started typing in a character block created after dialogue - now show suggestions
         updateSuggestionsPosition();
         setSuggestionType('character');
         setShowSuggestions(true);
       } else if (!isAfterDialogue) {
+        // Original behavior for character blocks not created after dialogue
         updateSuggestionsPosition();
         setSuggestionType('character');
         setShowSuggestions(true);
       }
+      // If isAfterDialogue and content is empty, don't show suggestions (wait for user to type)
     } else {
       setShowSuggestions(false);
     }
-  }, [
-    contentElement, 
-    suggestionClosingRef, 
-    isSceneSelectionActive, 
-    block.type, 
-    block.id, 
-    updateSuggestionsPosition, 
-    isCharacterBlockAfterDialogue, 
-    comments,
-    onContentChange,
-    applyAllCommentHighlights,
-    updateCommentOffsetsAfterEdit
-  ]);
+  }, [block.type, block.id, updateSuggestionsPosition, contentElement, isCharacterBlockAfterDialogue, isSceneSelectionActive]);
 
   // Enhanced blur handling
   const handleBlur = useCallback((e: React.FocusEvent<HTMLDivElement>) => {
@@ -1009,23 +599,6 @@ const BlockComponentImproved: React.FC<ExtendedBlockComponentProps> = ({
     setSelectedText('');
   }, []);
 
-  // Handle tooltip close
-  const handleTooltipClose = useCallback(() => {
-    setTooltipState(prev => ({
-      ...prev,
-      visible: false
-    }));
-  }, []);
-
-  // Cleanup hover timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
-
   // Effect to handle persistent text highlighting for ALL comments on this block
   useEffect(() => {
     if (!contentElement) return;
@@ -1068,7 +641,209 @@ const BlockComponentImproved: React.FC<ExtendedBlockComponentProps> = ({
         });
       }
     };
-  }, [block.id, contentElement, comments, activeCommentId, applyAllCommentHighlights]);
+  }, [block.id, contentElement, comments, activeCommentId]);
+
+  // Function to apply highlights for all comments with blending support
+  const applyAllCommentHighlights = useCallback((blockComments: Comment[]) => {
+    if (!contentElement || blockComments.length === 0) return;
+    
+    // Get the text content
+    const textContent = contentElement.textContent || '';
+    if (!textContent) return;
+    
+    // Create highlight ranges with overlap detection
+    const highlightRanges: Array<{
+      start: number;
+      end: number;
+      commentIds: string[];
+      comments: Comment[];
+    }> = [];
+    
+    // Process each comment to create ranges
+    blockComments.forEach(comment => {
+      if (comment.startOffset !== undefined && comment.endOffset !== undefined) {
+        // Check if this range overlaps with existing ranges
+        let merged = false;
+        
+        for (let i = 0; i < highlightRanges.length; i++) {
+          const existing = highlightRanges[i];
+          
+          // Check for overlap
+          if (comment.startOffset < existing.end && comment.endOffset > existing.start) {
+            // Merge overlapping ranges
+            existing.start = Math.min(existing.start, comment.startOffset);
+            existing.end = Math.max(existing.end, comment.endOffset);
+            existing.commentIds.push(comment.id);
+            existing.comments.push(comment);
+            merged = true;
+            break;
+          }
+        }
+        
+        // If not merged, create new range
+        if (!merged) {
+          highlightRanges.push({
+            start: comment.startOffset,
+            end: comment.endOffset,
+            commentIds: [comment.id],
+            comments: [comment]
+          });
+        }
+      }
+    });
+    
+    // Sort ranges by start position (reverse order for proper DOM manipulation)
+    highlightRanges.sort((a, b) => b.start - a.start);
+    
+    // Apply highlights to the DOM
+    let textNode = contentElement.firstChild;
+    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
+      // Create a text node if it doesn't exist
+      textNode = document.createTextNode(textContent);
+      contentElement.innerHTML = '';
+      contentElement.appendChild(textNode);
+    }
+    
+    // Apply each highlight range
+    highlightRanges.forEach(range => {
+      try {
+        // Find the current text node that contains our range
+        let currentNode = contentElement.firstChild;
+        let currentOffset = 0;
+        
+        // Navigate to the correct text node
+        while (currentNode && currentOffset + (currentNode.textContent?.length || 0) <= range.start) {
+          currentOffset += currentNode.textContent?.length || 0;
+          currentNode = currentNode.nextSibling;
+        }
+        
+        if (currentNode && currentNode.nodeType === Node.TEXT_NODE) {
+          const nodeStartOffset = range.start - currentOffset;
+          const nodeEndOffset = Math.min(range.end - currentOffset, currentNode.textContent?.length || 0);
+          
+          if (nodeStartOffset >= 0 && nodeEndOffset > nodeStartOffset) {
+            const domRange = document.createRange();
+            domRange.setStart(currentNode, nodeStartOffset);
+            domRange.setEnd(currentNode, nodeEndOffset);
+            
+            const span = document.createElement('span');
+            
+            // Determine highlight class based on overlap count and active state
+            const overlapCount = range.comments.length;
+            const isActive = range.commentIds.includes(activeCommentId || '');
+            
+            let className = 'comment-highlight';
+            if (overlapCount > 1) {
+              className += ` overlap-${Math.min(overlapCount - 1, 3)}`; // Cap at overlap-3
+            }
+            if (isActive) {
+              className += ' active';
+            }
+            
+            span.className = className;
+            span.dataset.commentIds = range.commentIds.join(',');
+            
+            // Add click handler for opening comments panel
+            span.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleHighlightClick(range.commentIds[0]); // Use first comment ID
+            });
+
+            // Add hover handlers for tooltip
+            span.addEventListener('mouseenter', (e) => {
+              handleHighlightHover(e, range.comments);
+            });
+
+            span.addEventListener('mouseleave', () => {
+              handleHighlightLeave();
+            });
+            
+            span.style.cursor = 'pointer';
+            
+            domRange.surroundContents(span);
+          }
+        }
+      } catch (e) {
+        console.error('Error applying individual highlight:', e);
+      }
+    });
+  }, [contentElement, activeCommentId]);
+
+  // Handle highlight hover to show tooltip
+  const handleHighlightHover = useCallback((e: MouseEvent, hoverComments: Comment[]) => {
+    // Clear any existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    // Set a timeout to show tooltip after 300ms (debounced)
+    hoverTimeoutRef.current = setTimeout(() => {
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      setTooltipState({
+        visible: true,
+        position: {
+          x: rect.left + rect.width / 2,
+          y: rect.top
+        },
+        comments: hoverComments
+      });
+    }, 300);
+  }, []);
+
+  // Handle highlight leave to hide tooltip
+  const handleHighlightLeave = useCallback(() => {
+    // Clear any pending timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+
+    // Hide tooltip immediately
+    setTooltipState(prev => ({
+      ...prev,
+      visible: false
+    }));
+  }, []);
+
+  // Handle tooltip close
+  const handleTooltipClose = useCallback(() => {
+    setTooltipState(prev => ({
+      ...prev,
+      visible: false
+    }));
+  }, []);
+
+  // Cleanup hover timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Handle highlight click to open comments panel and scroll to comment
+  const handleHighlightClick = useCallback((commentId: string) => {
+    // Open comments panel immediately if not already open
+    if (setShowCommentsPanel && !showCommentsPanel) {
+      setShowCommentsPanel(true);
+    }
+    
+    // Find the comment and trigger the selection handler
+    const comment = comments?.find(c => c.id === commentId);
+    if (comment && onCommentSelect) {
+      // If panel was just opened, add a small delay to ensure comment card is rendered
+      if (!showCommentsPanel) {
+        setTimeout(() => {
+          onCommentSelect(comment);
+        }, 100);
+      } else {
+        // Panel was already open, select immediately
+        onCommentSelect(comment);
+      }
+    }
+  }, [comments, onCommentSelect, setShowCommentsPanel, showCommentsPanel]);
 
   // Render suggestion components using portals
   const renderSuggestions = () => {

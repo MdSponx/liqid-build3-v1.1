@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { DarkModeProvider } from './contexts/DarkModeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import ErrorBoundary from './components/ErrorBoundary';
 
 // Loading component
 const LoadingScreen = () => (
@@ -106,11 +105,9 @@ function App() {
             <Route
               path="/projects/:projectId/screenplays/:screenplayId/editor"
               element={
-                <ErrorBoundary>
-                  <ProtectedRoute>
-                    <ScreenplayEditor />
-                  </ProtectedRoute>
-                </ErrorBoundary>
+                <ProtectedRoute>
+                  <ScreenplayEditor />
+                </ProtectedRoute>
               }
             />
             <Route 
