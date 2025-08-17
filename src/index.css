@@ -397,6 +397,115 @@ body {
   color: inherit;
 }
 
+/* Enhanced Selection Styles for Multiple Block Selection */
+
+/* Block Selection Mode - Global State */
+.screenplay-editor.block-selection-mode [contenteditable] {
+  cursor: pointer !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.screenplay-editor.block-selection-mode [contenteditable]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Mixed Selection Mode - Multiple blocks selected */
+.screenplay-editor.mixed-selection-mode [contenteditable] {
+  cursor: pointer !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.screenplay-editor.mixed-selection-mode [contenteditable]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Selected Block Styling */
+.block-container.selected {
+  position: relative;
+  background: rgba(232, 111, 44, 0.1);
+  border-left: 4px solid #E86F2C;
+  transform: translateX(2px);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(232, 111, 44, 0.15);
+}
+
+.block-container.selected::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: linear-gradient(to bottom, #E86F2C, #ff8c42);
+  border-radius: 1px;
+  box-shadow: 0 0 8px rgba(232, 111, 44, 0.3);
+}
+
+/* Multiple Selection - Enhanced Visual Feedback */
+.block-container.selected.multiple-selection {
+  background: rgba(232, 111, 44, 0.15);
+  border-left: 6px solid #E86F2C;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(232, 111, 44, 0.2);
+}
+
+.block-container.selected.multiple-selection::after {
+  content: '✓';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: #E86F2C;
+  border-radius: 50%;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Text Selection Mode - Active cursor */
+.block-container.selected.text-mode {
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 4px solid #3B82F6;
+  transform: translateX(2px);
+}
+
+.block-container.selected.text-mode::before {
+  background: linear-gradient(to bottom, #3B82F6, #60A5FA);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Hover States for Selection */
+.block-container:hover:not(.selected) {
+  background: rgba(232, 111, 44, 0.05);
+  transform: translateX(1px);
+  transition: all 0.15s ease;
+}
+
+.block-container.selectable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.block-container.selectable:hover {
+  background: rgba(232, 111, 44, 0.08);
+  border-left: 2px solid rgba(232, 111, 44, 0.3);
+}
+
 /* Enhanced multi-block selection styles */
 .screenplay-block.multi-selected {
   background-color: rgba(232, 111, 44, 0.1);

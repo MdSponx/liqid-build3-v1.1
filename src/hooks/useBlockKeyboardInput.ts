@@ -49,13 +49,15 @@ export const useBlockKeyboardInput = ({
     }
   }, [handleEnterKey, handleTabKey, handleBackspaceInEmptyBlock, setHasChanges]);
 
-  // Clear selection on any key press (except modifiers and navigation)
+  // Clear selection on any key press (except modifiers, navigation, and delete keys)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || 
           e.key === 'Shift' || e.key === 'Tab' || 
           e.key === 'ArrowUp' || e.key === 'ArrowDown' || 
-          e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+          e.key === 'Delete' || e.key === 'Backspace' ||
+          e.key === 'Escape') {
         return;
       }
 

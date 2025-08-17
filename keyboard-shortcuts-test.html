@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Selection & Keyboard Shortcuts Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f2;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #E86F2C, #ff8c42);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .demo-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .demo-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #E86F2C;
+        }
+
+        /* Block Styles */
+        .block-container {
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .block-container:hover {
+            background: rgba(232, 111, 44, 0.05);
+            border-color: rgba(232, 111, 44, 0.2);
+        }
+
+        .block-container.selected {
+            background: rgba(232, 111, 44, 0.1);
+            border-left: 4px solid #E86F2C;
+            transform: translateX(2px);
+            box-shadow: 0 2px 8px rgba(232, 111, 44, 0.15);
+        }
+
+        .block-container.selected.multiple-selection {
+            background: rgba(232, 111, 44, 0.15);
+            border-left: 6px solid #E86F2C;
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(232, 111, 44, 0.2);
+        }
+
+        .block-container.selected.multiple-selection::after {
+            content: '✓';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background: #E86F2C;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .block-container.selected.text-mode {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3B82F6;
+        }
+
+        .block-content {
+            outline: none;
+            min-height: 20px;
+        }
+
+        .block-content:focus {
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 4px;
+        }
+
+        /* Selection Indicator */
+        .selection-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(232, 111, 44, 0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 20px rgba(232, 111, 44, 0.3);
+            z-index: 1001;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .keyboard-hints {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            color: #1e293b;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+            animation: slideUp 0.3s ease 0.1s both;
+        }
+
+        .keyboard-hints .hint {
+            display: inline-block;
+            margin: 0 8px;
+        }
+
+        .keyboard-hints kbd {
+            background: rgba(232, 111, 44, 0.1);
+            color: rgba(232, 111, 44, 0.9);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 11px;
+        }
+
+        /* Confirmation Dialog */
+        .dialog-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        .dialog {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 90%;
+            padding: 24px;
+        }
+
+        .dialog-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .dialog-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-left: 12px;
+        }
+
+        .dialog-content {
+            margin-bottom: 20px;
+            color: #666;
+        }
+
+        .dialog-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #E86F2C;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #d65a1f;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .instructions {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .instructions h3 {
+            margin: 0 0 12px 0;
+            color: #1e293b;
+        }
+
+        .instructions ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            font-size: 12px;
+            z-index: 1000;
+        }
+
+        .status-item {
+            margin-bottom: 4px;
+        }
+
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .clipboard-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #10b981;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideInLeft 0.3s ease;
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useCallback, useRef, useEffect } = React;
+        const { AlertTriangle, Copy, Trash2, X } = lucide;
+
+        // Mock block data
+        const initialBlocks = [
+            { id: 'block-1', type: 'scene-heading', content: 'INT. COFFEE SHOP - DAY' },
+            { id: 'block-2', type: 'action', content: 'Sarah enters the bustling coffee shop, scanning the room for an empty table.' },
+            { id: 'block-3', type: 'character', content: 'SARAH' },
+            { id: 'block-4', type: 'dialogue', content: 'One large coffee, please. Make it strong.' },
+            { id: 'block-5', type: 'action', content: 'The barista nods and begins preparing the order.' },
+            { id: 'block-6', type: 'character', content: 'BARISTA' },
+            { id: 'block-7', type: 'dialogue', content: 'Coming right up. Rough morning?' },
+            { id: 'block-8', type: 'action', content: 'Sarah checks her phone nervously.' }
+        ];
+
+        // Enhanced Selection Hook (Simplified for demo)
+        const useEnhancedSelection = (blocks, updateBlocks) => {
+            const [selectionState, setSelectionState] = useState({
+                selectedBlocks: new Set(),
+                selectionMode: 'normal',
+                hasActiveTextCursor: false,
+                lastClickedBlockId: null
+            });
+
+            const [showPasteConfirmation, setShowPasteConfirmation] = useState(false);
+            const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+            const [confirmationData, setConfirmationData] = useState(null);
+            const clipboardRef = useRef([]);
+
+            const clearAllTextCursors = useCallback(() => {
+                document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+                    if (el === document.activeElement) {
+                        el.blur();
+                    }
+                });
+                const selection = window.getSelection();
+                if (selection) {
+                    selection.removeAllRanges();
+                }
+            }, []);
+
+            const handleBlockClick = useCallback((blockId, e) => {
+                const target = e.target;
+                const isContentEditableClick = target.hasAttribute('contenteditable');
+
+                if (e.ctrlKey || e.metaKey) {
+                    setSelectionState(prev => {
+                        const newSelection = new Set(prev.selectedBlocks);
+                        if (newSelection.has(blockId)) {
+                            newSelection.delete(blockId);
+                        } else {
+                            newSelection.add(blockId);
+                        }
+
+                        if (newSelection.size > 1) {
+                            setTimeout(clearAllTextCursors, 0);
+                        }
+
+                        return {
+                            ...prev,
+                            selectedBlocks: newSelection,
+                            lastClickedBlockId: blockId,
+                            hasActiveTextCursor: Boolean(newSelection.size === 1 && isContentEditableClick),
+                            selectionMode: newSelection.size > 1 ? 'mixed' : 
+                                          newSelection.size === 1 && isContentEditableClick ? 'text' : 'block'
+                        };
+                    });
+                } else if (e.shiftKey && selectionState.lastClickedBlockId) {
+                    const lastIndex = blocks.findIndex(b => b.id === selectionState.lastClickedBlockId);
+                    const currentIndex = blocks.findIndex(b => b.id === blockId);
+                    const [start, end] = lastIndex < currentIndex ? [lastIndex, currentIndex] : [currentIndex, lastIndex];
+                    
+                    const rangeSelection = new Set();
+                    for (let i = start; i <= end; i++) {
+                        rangeSelection.add(blocks[i].id);
+                    }
+                    
+                    setTimeout(clearAllTextCursors, 0);
+                    
+                    setSelectionState(prev => ({
+                        ...prev,
+                        selectedBlocks: rangeSelection,
+                        hasActiveTextCursor: false,
+                        selectionMode: 'mixed'
+                    }));
+                } else {
+                    setSelectionState(prev => ({
+                        ...prev,
+                        selectedBlocks: new Set([blockId]),
+                        lastClickedBlockId: blockId,
+                        hasActiveTextCursor: Boolean(isContentEditableClick),
+                        selectionMode: isContentEditableClick ? 'text' : 'block'
+                    }));
+                }
+            }, [blocks, selectionState.lastClickedBlockId, clearAllTextCursors]);
+
+            const copySelectedBlocks = useCallback(() => {
+                if (selectionState.selectedBlocks.size === 0) return;
+                const selectedBlocksArray = blocks.filter(block => 
+                    selectionState.selectedBlocks.has(block.id)
+                );
+                clipboardRef.current = selectedBlocksArray;
+                console.log('📋 Copied', selectedBlocksArray.length, 'blocks');
+            }, [blocks, selectionState.selectedBlocks]);
+
+            const performDelete = useCallback((blockIds) => {
+                const newBlocks = blocks.filter(block => !blockIds.includes(block.id));
+                updateBlocks(newBlocks);
+                setSelectionState(prev => ({
+                    ...prev,
+                    selectedBlocks: new Set(),
+                    selectionMode: 'normal',
+                    hasActiveTextCursor: false
+                }));
+                console.log('🗑️ Deleted', blockIds.length, 'blocks');
+            }, [blocks, updateBlocks]);
+
+            const performPaste = useCallback(() => {
+                if (clipboardRef.current.length === 0) return;
+                const newBlocks = [...blocks, ...clipboardRef.current.map(block => ({
+                    ...block,
+                    id: `${block.id}-copy-${Date.now()}`
+                }))];
+                updateBlocks(newBlocks);
+                console.log('📄 Pasted', clipboardRef.current.length, 'blocks');
+            }, [blocks, updateBlocks]);
+
+            const handleKeyDown = useCallback((e) => {
+                const context = selectionState.selectedBlocks.size === 0 ? 'normal' :
+                               selectionState.selectedBlocks.size === 1 && selectionState.hasActiveTextCursor ? 'text-editing' :
+                               selectionState.selectedBlocks.size === 1 ? 'block-selection' : 'mixed-selection';
+
+                if ((e.ctrlKey || e.metaKey) && e.key === 'a' && context !== 'text-editing') {
+                    e.preventDefault();
+                    const allBlockIds = blocks.map(block => block.id);
+                    setSelectionState(prev => ({
+                        ...prev,
+                        selectedBlocks: new Set(allBlockIds),
+                        selectionMode: 'mixed',
+                        hasActiveTextCursor: false
+                    }));
+                    clearAllTextCursors();
+                    return;
+                }
+
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setSelectionState(prev => ({
+                        ...prev,
+                        selectedBlocks: new Set(),
+                        selectionMode: 'normal',
+                        hasActiveTextCursor: false
+                    }));
+                    return;
+                }
+
+                if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectionState.selectedBlocks.size > 0) {
+                    e.preventDefault();
+                    copySelectedBlocks();
+                    return;
+                }
+
+                if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboardRef.current.length > 0) {
+                    e.preventDefault();
+                    if (selectionState.selectedBlocks.size > 1) {
+                        setConfirmationData({
+                            type: 'paste',
+                            clipboardCount: clipboardRef.current.length,
+                            replaceCount: selectionState.selectedBlocks.size
+                        });
+                        setShowPasteConfirmation(true);
+                    } else {
+                        performPaste();
+                    }
+                    return;
+                }
+
+                if ((e.key === 'Delete' || e.key === 'Backspace') && selectionState.selectedBlocks.size > 0 && context !== 'text-editing') {
+                    e.preventDefault();
+                    const selectedIds = Array.from(selectionState.selectedBlocks);
+                    if (selectedIds.length > 1) {
+                        setConfirmationData({
+                            type: 'delete',
+                            blockIds: selectedIds,
+                            count: selectedIds.length
+                        });
+                        setShowDeleteConfirmation(true);
+                    } else {
+                        performDelete(selectedIds);
+                    }
+                    return;
+                }
+            }, [selectionState, blocks, clearAllTextCursors, copySelectedBlocks, performPaste, performDelete]);
+
+            useEffect(() => {
+                document.addEventListener('keydown', handleKeyDown, true);
+                return () => {
+                    document.removeEventListener('keydown', handleKeyDown, true);
+                };
+            }, [handleKeyDown]);
+
+            return {
+                selectionState,
+                showPasteConfirmation,
+                showDeleteConfirmation,
+                confirmationData,
+                clipboardRef,
+                handleBlockClick,
+                confirmPaste: () => {
+                    performPaste();
+                    setShowPasteConfirmation(false);
+                    setConfirmationData(null);
+                },
+                cancelPaste: () => {
+                    setShowPasteConfirmation(false);
+                    setConfirmationData(null);
+                },
+                confirmDelete: () => {
+                    if (confirmationData?.blockIds) {
+                        performDelete(confirmationData.blockIds);
+                    }
+                    setShowDeleteConfirmation(false);
+                    setConfirmationData(null);
+                },
+                cancelDelete: () => {
+                    setShowDeleteConfirmation(false);
+                    setConfirmationData(null);
+                }
+            };
+        };
+
+        // Confirmation Dialogs
+        const PasteConfirmationDialog = ({ show, confirmationData, onConfirm, onCancel }) => {
+            if (!show) return null;
+
+            return (
+                <div className="dialog-overlay">
+                    <div className="dialog">
+                        <div className="dialog-header">
+                            <Copy size={24} style={{ color: '#3B82F6' }} />
+                            <div className="dialog-title">Confirm Paste</div>
+                        </div>
+                        <div className="dialog-content">
+                            Replace {confirmationData?.replaceCount || 0} selected blocks with {confirmationData?.clipboardCount || 0} new blocks?
+                        </div>
+                        <div className="dialog-actions">
+                            <button className="btn btn-primary" onClick={onConfirm}>
+                                Paste
+                            </button>
+                            <button className="btn btn-secondary" onClick={onCancel}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const DeleteConfirmationDialog = ({ show, confirmationData, onConfirm, onCancel }) => {
+            if (!show) return null;
+
+            return (
+                <div className="dialog-overlay">
+                    <div className="dialog">
+                        <div className="dialog-header">
+                            <Trash2 size={24} style={{ color: '#EF4444' }} />
+                            <div className="dialog-title">Confirm Delete</div>
+                        </div>
+                        <div className="dialog-content">
+                            Are you sure you want to delete <strong>{confirmationData?.count || 0} blocks</strong>?
+                        </div>
+                        <div className="dialog-actions">
+                            <button className="btn btn-primary" onClick={onConfirm} style={{ background: '#EF4444' }}>
+                                Delete
+                            </button>
+                            <button className="btn btn-secondary" onClick={onCancel}>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main Demo Component
+        const EnhancedSelectionDemo = () => {
+            const [blocks, setBlocks] = useState(initialBlocks);
+            
+            const {
+                selectionState,
+                showPasteConfirmation,
+                showDeleteConfirmation,
+                confirmationData,
+                clipboardRef,
+                handleBlockClick,
+                confirmPaste,
+                cancelPaste,
+                confirmDelete,
+                cancelDelete
+            } = useEnhancedSelection(blocks, setBlocks);
+
+            const getBlockClasses = (blockId) => {
+                const isSelected = selectionState.selectedBlocks.has(blockId);
+                const isMultiple = selectionState.selectedBlocks.size > 1;
+                
+                let classes = 'block-container';
+                
+                if (isSelected) {
+                    classes += ' selected';
+                    if (isMultiple) {
+                        classes += ' multiple-selection';
+                    }
+                    if (selectionState.selectionMode === 'text') {
+                        classes += ' text-mode';
+                    }
+                }
+                
+                return classes;
+            };
+
+            const getModeText = () => {
+                switch (selectionState.selectionMode) {
+                    case 'text': return 'Text Editing Mode';
+                    case 'block': return 'Block Selection Mode';
+                    case 'mixed': return 'Multiple Block Selection';
+                    default: return 'Normal Mode';
+                }
+            };
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>Enhanced Selection & Keyboard Shortcuts Demo</h1>
+                        <p>Test the new selection protocol with confirmation dialogs</p>
+                    </div>
+
+                    <div className="content">
+                        <div className="instructions">
+                            <h3>How to Test:</h3>
+                            <ul>
+                                <li><strong>Single Click:</strong> Select a block</li>
+                                <li><strong>Ctrl+Click:</strong> Add/remove blocks from selection</li>
+                                <li><strong>Shift+Click:</strong> Select range of blocks</li>
+                                <li><strong>Click on text:</strong> Enter text editing mode</li>
+                                <li><strong>Ctrl+A:</strong> Select all blocks</li>
+                                <li><strong>Ctrl+C:</strong> Copy selected blocks</li>
+                                <li><strong>Ctrl+V:</strong> Paste (with confirmation for complex operations)</li>
+                                <li><strong>Delete:</strong> Delete selected blocks (with confirmation for multiple)</li>
+                                <li><strong>Escape:</strong> Clear selection</li>
+                            </ul>
+                        </div>
+
+                        <div className="demo-section">
+                            <div className="demo-title">Screenplay Blocks</div>
+                            {blocks.map((block) => (
+                                <div
+                                    key={block.id}
+                                    className={getBlockClasses(block.id)}
+                                    onClick={(e) => handleBlockClick(block.id, e)}
+                                >
+                                    <div 
+                                        className="block-content"
+                                        contentEditable
+                                        suppressContentEditableWarning
+                                        onFocus={(e) => e.stopPropagation()}
+                                    >
+                                        {block.content}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Status Display */}
+                    <div className="status">
+                        <div className="status-item">
+                            <strong>Mode:</strong> {getModeText()}
+                        </div>
+                        <div className="status-item">
+                            <strong>Selected:</strong> {selectionState.selectedBlocks.size} blocks
+                        </div>
+                        <div className="status-item">
+                            <strong>Clipboard:</strong> {clipboardRef.current.length} blocks
+                        </div>
+                        <div className="status-item">
+                            <strong>Text Cursor:</strong> {selectionState.hasActiveTextCursor ? 'Active' : 'Inactive'}
+                        </div>
+                    </div>
+
+                    {/* Clipboard Indicator */}
+                    {clipboardRef.current.length > 0 && (
+                        <div className="clipboard-indicator">
+                            📋 {clipboardRef.current.length} blocks in clipboard
+                        </div>
+                    )}
+
+                    {/* Selection Indicator */}
+                    {selectionState.selectedBlocks.size > 0 && (
+                        <div className="selection-indicator">
+                            {selectionState.selectedBlocks.size} blocks selected ({getModeText()})
+                        </div>
+                    )}
+
+                    {/* Keyboard Hints */}
+                    {selectionState.selectedBlocks.size > 0 && (
+                        <div className="keyboard-hints">
+                            <span className="hint">
+                                <kbd>Ctrl+C</kbd> Copy
+                            </span>
+                            <span className="hint">
+                                <kbd>Ctrl+V</kbd> Paste
+                            </span>
+                            <span className="hint">
+                                <kbd>Del</kbd> Delete
+                            </span>
+                            <span className="hint">
+                                <kbd>Esc</kbd> Clear
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Confirmation Dialogs */}
+                    <PasteConfirmationDialog
+                        show={showPasteConfirmation}
+                        confirmationData={confirmationData}
+                        onConfirm={confirmPaste}
+                        onCancel={cancelPaste}
+                    />
+
+                    <DeleteConfirmationDialog
+                        show={showDeleteConfirmation}
+                        confirmationData={confirmationData}
+                        onConfirm={confirmDelete}
+                        onCancel={cancelDelete}
+                    />
+                </div>
+            );
+        };
+
+        // Render the demo
+        ReactDOM.render(<EnhancedSelectionDemo />, document.getElementById('root'));
+    </script>
+</body>
+</html>

@@ -480,13 +480,14 @@ export const useDragSelection = ({
     container.addEventListener('mousedown', handleMouseDown, { capture: true });
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('keydown', handleKeyDown);
+    // Use capture phase for keyboard events to ensure they're handled before other listeners
+    document.addEventListener('keydown', handleKeyDown, { capture: true });
 
     return () => {
       container.removeEventListener('mousedown', handleMouseDown, { capture: true });
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, { capture: true });
       
       // Clean up any pending animation frame
       if (animationFrameRef.current) {
