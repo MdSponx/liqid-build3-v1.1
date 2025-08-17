@@ -51,10 +51,10 @@ export const runThaiPDFTest = async (): Promise<void> => {
     console.log('   - Dialogue: สวัสดีครับ วันนี้อากาศดีจังเลย');
     
     // Import the export function
-    const { exportToPDF } = await import('./pdfExport');
+    const { exportToEnhancedStandardPDF } = await import('./pdfExport');
     
     // Test with Thai content
-    await exportToPDF(
+    await exportToEnhancedStandardPDF(
       testBlocks,
       'บททดสอบภาษาไทย', // Thai title
       'นักเขียนไทย', // Thai author

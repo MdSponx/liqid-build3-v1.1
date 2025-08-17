@@ -263,35 +263,6 @@ const ScreenplayEditor: React.FC = () => {
     }
   }, [state.activeBlock, state.comments, showCommentsPanel]);
 
-  // Smart Autosave implementation with scene reordering awareness
-  useEffect(() => {
-    // Clear any existing timer
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current);
-    }
-
-    // Only set up autosave if there are changes to save and not reordering scenes
-    if (state.blocks.length > 0 && hasChanges && !isSceneReordering) {
-      // Set a new timer for autosave (3 seconds of inactivity)
-      autosaveTimerRef.current = setTimeout(async () => {
-        console.log('Autosave triggered after inactivity');
-        try {
-          await handleSaveWithEditorState();
-          console.log('Autosave completed successfully');
-        } catch (err) {
-          console.error('Autosave failed:', err);
-        }
-      }, 3000);
-    }
-
-    // Cleanup function
-    return () => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current);
-      }
-    };
-  }, [state.blocks, hasChanges, isSceneReordering]); // Added isSceneReordering to dependencies
-
   const updateEditorState = useCallback(async () => {
     if (!projectId || !screenplayId || !user?.id) {
       console.warn('Cannot update editor state: Missing project ID, screenplay ID, or user ID.');
@@ -324,13 +295,66 @@ const ScreenplayEditor: React.FC = () => {
 
   const handleSaveWithEditorState = useCallback(async () => {
     try {
+      console.log('💾 Saving with editor state...');
       await updateEditorState();
-      return await handleSave();
+      const result = await handleSave();
+      
+      if (result && result.success) {
+        console.log('✅ Save successful, resetting hasChanges');
+        setHasChanges(false); // Critical: Reset hasChanges after successful save
+      }
+      
+      return result;
     } catch (err) {
-      console.error('Error saving screenplay:', err);
+      console.error('❌ Error saving screenplay:', err);
       return { success: false, error: 'Failed to save screenplay' };
     }
-  }, [handleSave, updateEditorState]);
+  }, [handleSave, updateEditorState, setHasChanges]);
+
+  // Smart Autosave implementation with scene reordering awareness and comprehensive debugging
+  useEffect(() => {
+    console.log('🔍 Autosave Effect Debug:', {
+      blocksLength: state.blocks.length,
+      hasChanges,
+      isSceneReordering,
+      timerExists: !!autosaveTimerRef.current,
+      handleSaveWithEditorStateExists: !!handleSaveWithEditorState
+    });
+
+    // Clear any existing timer
+    if (autosaveTimerRef.current) {
+      console.log('⏰ Clearing existing autosave timer');
+      clearTimeout(autosaveTimerRef.current);
+    }
+
+    // Only set up autosave if there are changes to save and not reordering scenes
+    if (state.blocks.length > 0 && hasChanges && !isSceneReordering) {
+      console.log('✅ Setting autosave timer for 3 seconds');
+      autosaveTimerRef.current = setTimeout(async () => {
+        console.log('🚀 Autosave triggered after inactivity');
+        try {
+          await handleSaveWithEditorState();
+          console.log('💾 Autosave completed successfully');
+        } catch (err) {
+          console.error('❌ Autosave failed:', err);
+        }
+      }, 3000);
+    } else {
+      console.log('❌ Autosave conditions not met:', {
+        hasBlocks: state.blocks.length > 0,
+        hasChanges,
+        notReordering: !isSceneReordering
+      });
+    }
+
+    // Cleanup function
+    return () => {
+      if (autosaveTimerRef.current) {
+        console.log('🧹 Cleanup: Clearing autosave timer');
+        clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [state.blocks, hasChanges, isSceneReordering, handleSaveWithEditorState]); // FIXED: Added missing handleSaveWithEditorState dependency
 
   // Create a wrapper function for setSelectedBlocks that handles both direct values and functions
   const setSelectedBlocks = useCallback((blocksOrFunction: Set<string> | ((prev: Set<string>) => Set<string>)) => {
@@ -368,7 +392,8 @@ const ScreenplayEditor: React.FC = () => {
     setHasChanges,
     projectId,
     screenplayId,
-    onSceneHeadingUpdate
+    onSceneHeadingUpdate,
+    setActiveBlock: (blockId: string) => setState(prev => ({ ...prev, activeBlock: blockId }))
   });
 
   // Create a simple action block creation function
@@ -654,10 +679,25 @@ const ScreenplayEditor: React.FC = () => {
     handleFormatChange,
   });
 
-  // Mark changes when blocks are updated
+  // Mark changes when blocks are updated with enhanced debugging
   useEffect(() => {
+    console.log('📝 Blocks changed, setting hasChanges to true');
+    console.log('📊 New blocks count:', state.blocks.length);
     setHasChanges(true);
   }, [state.blocks, setHasChanges]);
+
+  // Failsafe for isSceneReordering flag to prevent it from getting stuck
+  useEffect(() => {
+    if (isSceneReordering) {
+      console.log('⏰ Scene reordering detected, setting 5s failsafe timer');
+      const failsafeTimer = setTimeout(() => {
+        console.log('🔄 Failsafe: Resetting isSceneReordering after 5 seconds');
+        setIsSceneReordering(false);
+      }, 5000);
+
+      return () => clearTimeout(failsafeTimer);
+    }
+  }, [isSceneReordering]);
 
   // Enhanced focus management for active block changes (with suggestion awareness)
   useEffect(() => {

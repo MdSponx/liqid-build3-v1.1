@@ -73,6 +73,7 @@ export interface BlockHandlers {
   handleMouseDown: (id: string, e: React.MouseEvent) => void;
   clearSelection: () => void;
   isCharacterBlockAfterDialogue: (blockId: string) => boolean;
+  createActionBlockAfterSceneHeading: () => string | undefined;
 }
 
 // Updated Comment interface without parentId and depth fields

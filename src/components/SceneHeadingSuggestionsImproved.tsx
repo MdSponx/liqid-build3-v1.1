@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useSceneHeadings } from '../hooks/useSceneHeadings';
+import { useSceneHeadingKeyboardController } from '../hooks/useSceneHeadingKeyboardController';
 
 interface SceneHeadingSuggestionsImprovedProps {
   blockId: string;
@@ -116,7 +117,9 @@ const SceneHeadingSuggestionsImproved: React.FC<SceneHeadingSuggestionsImprovedP
   }, [currentInput, generateSuggestions]);
 
   // Handle selection of a scene heading with optimistic update
-  const handleSelectSuggestion = useCallback(async (suggestion: string) => {
+  const handleSelectSuggestion = useCallback((suggestion: string) => {
+    console.log('🎯 Scene heading selected:', suggestion);
+    
     const trimmedSuggestion = suggestion.trim();
     
     // Check if this is just a prefix selection (INT., EXT., etc.)
@@ -131,86 +134,45 @@ const SceneHeadingSuggestionsImproved: React.FC<SceneHeadingSuggestionsImprovedP
       return; // Don't close suggestions, let user continue typing
     }
     
-    // For complete scene headings, immediately close suggestions to prevent multiple events
-    onClose();
-    
     // OPTIMISTIC UPDATE: Immediately update the UI
     onSelect(trimmedSuggestion);
     
-    // Only save to Firestore if it's not a default type
-    const isDefaultType = defaultPrefixes.some(prefix => 
-      prefix === trimmedSuggestion
-    );
-    
-    if (!isDefaultType && trimmedSuggestion.length > 0) {
-      // Set saving status for UI feedback
-      const suggestionId = trimmedSuggestion.replace(/\s+/g, '-').toLowerCase();
-      setSavingStatus({ id: suggestionId, status: 'saving' });
-      
-      try {
-        // Background save operation
-        await saveSceneHeading(trimmedSuggestion);
-        
-        // Update status on success
-        setSavingStatus({ id: suggestionId, status: 'success' });
-        
-        // Clear success status after a delay
-        setTimeout(() => {
-          setSavingStatus(null);
-        }, 2000);
-      } catch (error) {
-        console.error('Error saving scene heading:', error);
-        
-        // Update status on error
-        setSavingStatus({ id: suggestionId, status: 'error' });
-        
-        // We don't roll back the UI here because the user has already seen and
-        // continued working with their selection. Instead, we show an error status.
-        
-        // Clear error status after a delay
-        setTimeout(() => {
-          setSavingStatus(null);
-        }, 3000);
-      }
+    // Fire-and-forget Firestore save for complete scene headings
+    if (trimmedSuggestion && !isPrefixOnly) {
+      saveSceneHeadingToFirestore(trimmedSuggestion).catch(console.error);
     }
-  }, [saveSceneHeading, onSelect, onClose]);
+    
+    console.log('✅ Scene heading processing complete');
+  }, [onSelect]);
 
-  // Enhanced keyboard navigation with proper event handling
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (suggestions.length === 0) return;
+  // Fire-and-forget save function
+  const saveSceneHeadingToFirestore = useCallback(async (suggestion: string) => {
+    try {
+      await saveSceneHeading(suggestion);
+      console.log('✅ Scene heading saved to Firestore:', suggestion);
+    } catch (error) {
+      console.error('❌ Error saving scene heading to Firestore:', error);
+    }
+  }, [saveSceneHeading]);
 
-      const target = e.target as HTMLElement;
-      const isFromActiveBlock = target.getAttribute('data-block-id') === blockId;
-      
-      // Only handle if this is from the active block
-      if (!isFromActiveBlock) return;
+  // Handle action block creation
+  const handleCreateActionBlock = useCallback(() => {
+    console.log('🚀 Creating action block after scene heading');
+    if (onEnterAction) {
+      onEnterAction();
+    }
+  }, [onEnterAction]);
 
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        e.stopPropagation();
-        setSelectedIndex(prev => (prev + 1) % suggestions.length);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        e.stopPropagation();
-        setSelectedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        if (suggestions[selectedIndex]) {
-          handleSelectSuggestion(suggestions[selectedIndex].label);
-        }
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        onClose();
-      }
-    };
-
-    // Use capture phase to ensure we get the event before other handlers
-    document.addEventListener('keydown', handleKeyDown, true);
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [selectedIndex, suggestions, handleSelectSuggestion, onClose, blockId]);
+  // Use centralized keyboard controller
+  const { isProcessing } = useSceneHeadingKeyboardController({
+    blockId,
+    suggestions,
+    selectedIndex,
+    setSelectedIndex,
+    onSelectSuggestion: handleSelectSuggestion,
+    onClose,
+    onCreateActionBlock: handleCreateActionBlock
+  });
 
   // Close when clicking outside
   useEffect(() => {
@@ -312,6 +274,16 @@ const SceneHeadingSuggestionsImproved: React.FC<SceneHeadingSuggestionsImprovedP
         <div className="px-3 py-2 bg-red-100 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800 flex items-center">
           <span className="text-sm text-red-700 dark:text-red-300">
             {error}
+          </span>
+        </div>
+      )}
+      
+      {/* Processing indicator */}
+      {isProcessing && (
+        <div className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800 flex items-center">
+          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+          <span className="text-sm text-blue-700 dark:text-blue-300">
+            Processing selection...
           </span>
         </div>
       )}

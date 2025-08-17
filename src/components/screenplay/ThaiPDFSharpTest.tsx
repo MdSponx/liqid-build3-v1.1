@@ -1,5 +1,5 @@
 import React from 'react';
-import { exportToPDF } from '../../utils/pdfExport';
+import { exportToEnhancedStandardPDF } from '../../utils/pdfExport';
 import { Block } from '../../types';
 
 const ThaiPDFSharpTest: React.FC = () => {
@@ -66,7 +66,7 @@ const ThaiPDFSharpTest: React.FC = () => {
     try {
       console.log('🧪 Testing SHARP Thai PDF export...');
       
-      await exportToPDF(
+      await exportToEnhancedStandardPDF(
         testBlocks,
         'ทดสอบ PDF ภาษาไทยแบบคมชัด',
         'ผู้เขียนทดสอบ',
@@ -117,7 +117,7 @@ const ThaiPDFSharpTest: React.FC = () => {
     try {
       console.log('🧪 Testing MIXED content PDF export...');
       
-      await exportToPDF(
+      await exportToEnhancedStandardPDF(
         mixedBlocks,
         'Mixed Thai-English Test',
         'Test Author ผู้เขียนทดสอบ',

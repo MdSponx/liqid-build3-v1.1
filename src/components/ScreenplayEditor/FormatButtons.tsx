@@ -67,6 +67,23 @@ const FormatButtons: React.FC<FormatButtonsProps> = ({
     onFormatChange(type);
   };
 
+  // New function to handle cycling through block types
+  const handleCycleFormat = () => {
+    if (!activeBlock || !activeType) {
+      return;
+    }
+    
+    // Find current type index
+    const currentIndex = formats.findIndex(f => f.type === activeType);
+    
+    // Get next type (cycle back to start if at end)
+    const nextIndex = (currentIndex + 1) % formats.length;
+    const nextType = formats[nextIndex].type;
+    
+    // Apply the format change
+    onFormatChange(nextType);
+  };
+
   const toggleMinimize = () => {
     setIsMinimized(!isMinimized);
   };
@@ -97,12 +114,14 @@ const FormatButtons: React.FC<FormatButtonsProps> = ({
       >
         {isMinimized ? (
           <button
-            onClick={toggleMinimize}
+            onClick={handleCycleFormat}
+            onDoubleClick={toggleMinimize}
             className={`rounded-full shadow-lg px-4 py-2 border transition-all duration-300 ${
               isDarkMode 
                 ? 'bg-[#1E4D3A]/90 border-primary-800 text-white' 
                 : 'bg-white/90 border-gray-200 text-gray-700'
             }`}
+            title="Tap to cycle block types, double-tap to expand"
           >
             <div className="relative flex items-center">
               <span className="text-xl mr-2">{getActiveEmoji()}</span>

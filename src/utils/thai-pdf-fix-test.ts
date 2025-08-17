@@ -46,10 +46,10 @@ export const testThaiPDFExportFix = async (): Promise<void> => {
     console.log('Testing Thai PDF export with fixes...');
     
     // Import the export function
-    const { exportToPDF } = await import('./pdfExport');
+    const { exportToEnhancedStandardPDF } = await import('./pdfExport');
     
     // Test with Thai content
-    await exportToPDF(
+    await exportToEnhancedStandardPDF(
       testThaiBlocks,
       'บททดสอบภาษาไทย', // Thai title
       'นักเขียนไทย', // Thai author

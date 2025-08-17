@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Block } from '../types';
 
 interface UseBlockKeyboardInputProps {
@@ -72,6 +72,3 @@ export const useBlockKeyboardInput = ({
     handleKeyDown
   };
 };
-
-// Import React hooks
-import { useCallback, useEffect } from 'react';

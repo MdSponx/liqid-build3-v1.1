@@ -79,26 +79,45 @@ const ScreenplayNavigator: React.FC<ScreenplayNavigatorProps> = ({
   }, []);
 
   const handleSave = async () => {
-    if (!onSave || isSaving || !hasChanges) return;
+    console.log('👆 Manual save attempted with conditions:', {
+      onSaveExists: !!onSave,
+      isSaving,
+      hasChanges
+    });
+
+    if (!onSave || isSaving || !hasChanges) {
+      console.log('❌ Save blocked:', {
+        noOnSave: !onSave,
+        alreadySaving: isSaving,
+        noChanges: !hasChanges
+      });
+      return;
+    }
     
     try {
+      console.log('🚀 Starting manual save process...');
       setSaveError(null);
       const result = await onSave();
 
+      console.log('📊 Manual save result:', result);
+
       if (!result.success) {
         if (result.conflicts) {
+          console.log('⚔️ Conflicts detected:', result.conflicts);
           setConflicts(result.conflicts);
           setShowConflictDialog(true);
         } else {
+          console.log('❌ Manual save failed:', result.error);
           setSaveError(result.error || 'Failed to save screenplay');
         }
       } else {
+        console.log('✅ Manual save successful!');
         // Show success message briefly
         setShowSaveSuccess(true);
         setTimeout(() => setShowSaveSuccess(false), 2000);
       }
     } catch (err) {
-      console.error('Error saving screenplay:', err);
+      console.error('💥 Manual save exception:', err);
       setSaveError('Failed to save screenplay');
     }
   };
@@ -178,9 +197,9 @@ const ScreenplayNavigator: React.FC<ScreenplayNavigatorProps> = ({
       contact: ''
     };
     
-    // Use the Thai-supported PDF export
-    import('../utils/pdfExport').then(({ exportToPDF }) => {
-      exportToPDF(
+    // Use the enhanced standard PDF export
+    import('../utils/pdfExport').then(({ exportToEnhancedStandardPDF }) => {
+      exportToEnhancedStandardPDF(
         blocks,
         header.title || documentTitle || 'Untitled Screenplay',
         header.author || 'LiQid Screenplay Writer',

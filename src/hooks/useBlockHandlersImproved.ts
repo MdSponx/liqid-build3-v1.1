@@ -24,6 +24,7 @@ interface UseBlockHandlersImprovedProps {
   projectId?: string;
   screenplayId?: string;
   onSceneHeadingUpdate?: () => Promise<void>;
+  setActiveBlock?: (blockId: string) => void;
 }
 
 export const useBlockHandlersImproved = (
@@ -39,7 +40,8 @@ export const useBlockHandlersImproved = (
     setHasChanges,
     projectId,
     screenplayId,
-    onSceneHeadingUpdate
+    onSceneHeadingUpdate,
+    setActiveBlock
   }: UseBlockHandlersImprovedProps
 ): BlockHandlers => {
   // Initialize focus management
@@ -60,28 +62,63 @@ export const useBlockHandlersImproved = (
     setSelectedBlocks 
   });
 
-  // Create action block after scene heading
+  // Enhanced action block creation after scene heading
   const createActionBlockAfterSceneHeading = useCallback(() => {
+    console.log('🎬 Creating action block after scene heading:', activeBlock);
+    
     if (!activeBlock) return;
     
-    const currentIndex = blocks.findIndex((b) => b.id === activeBlock);
-    if (currentIndex === -1) return;
+    const sceneHeadingIndex = blocks.findIndex((b) => b.id === activeBlock);
+    if (sceneHeadingIndex === -1) return;
 
-    const actionBlockId = `action-${uuidv4()}`;
-    const actionBlock = {
-      id: actionBlockId,
+    // Check if next block is already an action block
+    const nextBlock = blocks[sceneHeadingIndex + 1];
+    if (nextBlock && nextBlock.type === 'action') {
+      console.log('✅ Action block already exists, focusing it');
+      // Focus existing action block
+      requestAnimationFrame(() => {
+        const actionElement = document.querySelector(`[data-block-id="${nextBlock.id}"]`);
+        if (actionElement) {
+          const editableArea = actionElement.querySelector('[contenteditable="true"]') as HTMLElement;
+          if (editableArea) {
+            editableArea.focus();
+            console.log('✅ Focused existing action block');
+          }
+        }
+      });
+      return nextBlock.id;
+    }
+
+    // Create new action block
+    const newActionBlock: Block = {
+      id: `action-${uuidv4()}`,
       type: 'action',
-      content: '',
+      content: ''
     };
 
-    const updatedBlocks = [...blocks];
-    updatedBlocks.splice(currentIndex + 1, 0, actionBlock);
-    
-    updateBlocks(updatedBlocks);
+    console.log('📝 Inserting new action block:', newActionBlock.id);
+
+    // Insert the new block
+    const newBlocks = [...blocks];
+    newBlocks.splice(sceneHeadingIndex + 1, 0, newActionBlock);
+
+    // Update state
+    updateBlocks(newBlocks);
     setHasChanges?.(true);
 
-    // Return the ID so it can be focused later
-    return actionBlockId;
+    // Focus the new action block
+    requestAnimationFrame(() => {
+      const newElement = document.querySelector(`[data-block-id="${newActionBlock.id}"]`);
+      if (newElement) {
+        const editableArea = newElement.querySelector('[contenteditable="true"]') as HTMLElement;
+        if (editableArea) {
+          editableArea.focus();
+          console.log('✅ Focused new action block');
+        }
+      }
+    });
+
+    return newActionBlock.id;
   }, [activeBlock, blocks, updateBlocks, setHasChanges]);
 
   // Initialize block formatting
@@ -91,7 +128,8 @@ export const useBlockHandlersImproved = (
     updateBlocks,
     addToHistory,
     setHasChanges,
-    blockRefs
+    blockRefs,
+    setActiveBlock
   });
 
   // Initialize Enter key logic

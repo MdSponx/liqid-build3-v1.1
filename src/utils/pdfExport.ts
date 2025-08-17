@@ -1,287 +1,476 @@
+// Standard Screenplay PDF Export with correct formatting
 import jsPDF from 'jspdf';
 import { Block } from '../types';
 import {
   containsThaiText,
-  setupThaiSupport,
-  addThaiText,
-  enhanceTextQuality,
-  splitThaiTextToSize,
+  normalizeThaiText,
+  setFontForText,
+  processTextForPDF,
   getTextWidth,
-  addPageBreakIfNeeded,
-  willTextFitOnPage,
-  validateTextPosition,
-  processTextForPDF
-} from './thai-pdf-support-sharp';
+  splitThaiTextToSize,
+  addThaiText,
+  getLineHeight,
+  validateTextForPDF
+} from './thai-pdf-support-simple';
 
-// A4 Page Constants (CRITICAL for proper layout)
+// Page setup for A4 (Thai standard)
 const PAGE_HEIGHT = 841.89; // A4 height in points
 const PAGE_WIDTH = 595.28;  // A4 width in points
-const MARGIN_LEFT = 85;     // Left margin
-const MARGIN_RIGHT = 68;    // Right margin  
-const MARGIN_TOP = 68;      // Top margin
-const MARGIN_BOTTOM = 68;   // Bottom margin
-const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT; // Safe content area
-const LINE_HEIGHT = 14.4;   // Standard line height
 
-// Screenplay layout positions (Thai standard)
-const LAYOUT_POSITIONS = {
-  'scene-heading': { marginLeft: 0, bold: true, uppercase: true, alignRight: false },
-  'action': { marginLeft: 0, bold: false, uppercase: false, alignRight: false },
-  'character': { marginLeft: 200, bold: false, uppercase: true, alignRight: false },      // Character names
-  'dialogue': { marginLeft: 130, bold: false, uppercase: false, alignRight: false },       // Dialogue text
-  'parenthetical': { marginLeft: 165, bold: false, uppercase: false, alignRight: false },  // (parenthetical)
-  'transition': { marginLeft: 0, bold: false, uppercase: true, alignRight: true },      // FADE IN: etc. - flush right
-  'text': { marginLeft: 0, bold: false, uppercase: false, alignRight: false },
-  'shot': { marginLeft: 0, bold: true, uppercase: true, alignRight: false }
+// Standard screenplay margins (industry standard)
+const MARGIN_LEFT = 85;     // ~30mm
+const MARGIN_RIGHT = 68;    // ~24mm  
+const MARGIN_TOP = 68;      // ~24mm
+const MARGIN_BOTTOM = 68;   // ~24mm
+
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+const LINE_HEIGHT = 14.4;
+
+// Scene number positioning (LEFT MARGIN - OUTSIDE content area)
+const SCENE_NUMBER_X = 30; // Outside left margin, closer to edge
+
+// Standard screenplay formatting (exact industry specifications)
+const blockLayouts = {
+  'scene-heading': {
+    marginLeft: 0,
+    indent: 0,
+    spaceAfter: LINE_HEIGHT,
+    uppercase: true,
+    bold: true,
+    showSceneNumber: true,
+    rightAlign: false
+  },
+  'action': {
+    marginLeft: 0,
+    indent: 0,
+    spaceAfter: LINE_HEIGHT,
+    uppercase: false,
+    bold: false,
+    rightAlign: false
+  },
+  'character': {
+    marginLeft: 200, // 200pt from left margin
+    indent: 0,
+    spaceAfter: 0,
+    uppercase: true,
+    bold: false,
+    rightAlign: false
+  },
+  'dialogue': {
+    marginLeft: 130, // 130pt from left margin
+    indent: 0,
+    spaceAfter: LINE_HEIGHT,
+    uppercase: false,
+    bold: false,
+    rightAlign: false
+  },
+  'parenthetical': {
+    marginLeft: 165, // 165pt from left margin (between character and dialogue)
+    indent: 0,
+    spaceAfter: 0,
+    uppercase: false,
+    bold: false,
+    inline: true, // Special flag to handle inline parenthetical
+    rightAlign: false
+  },
+  'transition': {
+    marginLeft: 0,
+    indent: 0,
+    spaceAfter: LINE_HEIGHT,
+    uppercase: true,
+    bold: false,
+    rightAlign: true
+  }
 };
 
-// Helper function for title page
-function createTitlePage(pdf: jsPDF, title: string, author: string, contact: string) {
-  enhanceTextQuality(pdf);
-  
+// Title page creation
+const createStandardTitlePage = (
+  pdf: jsPDF,
+  title: string,
+  author: string,
+  contact: string
+): void => {
   // Title (centered, 1/3 down page)
-  pdf.setFontSize(18);
+  const titleText = normalizeThaiText(title.toUpperCase());
   const titleY = PAGE_HEIGHT / 3;
-  const titleWidth = getTextWidth(pdf, title);
+  
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(14);
+  const titleWidth = pdf.getTextWidth(titleText);
   const titleX = (PAGE_WIDTH - titleWidth) / 2;
-  addThaiText(pdf, title.toUpperCase(), titleX, titleY, 'bold');
+  pdf.text(titleText, titleX, titleY);
   
-  // Reset font size
+  // "Written by" text
+  const writtenByText = containsThaiText(author) ? 'เขียนโดย' : 'Written by';
+  const writtenByY = titleY + LINE_HEIGHT * 3;
+  
+  pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(12);
-  
-  // "Written by" or "เขียนโดย"
-  const writtenBy = containsThaiText(author) ? 'เขียนโดย' : 'Written by';
-  const writtenByY = PAGE_HEIGHT / 2;
-  const writtenByWidth = getTextWidth(pdf, writtenBy);
+  const writtenByWidth = pdf.getTextWidth(writtenByText);
   const writtenByX = (PAGE_WIDTH - writtenByWidth) / 2;
-  addThaiText(pdf, writtenBy, writtenByX, writtenByY, 'normal');
+  pdf.text(writtenByText, writtenByX, writtenByY);
   
   // Author name
+  const authorText = normalizeThaiText(author);
   const authorY = writtenByY + LINE_HEIGHT * 2;
-  const authorWidth = getTextWidth(pdf, author);
+  const authorWidth = pdf.getTextWidth(authorText);
   const authorX = (PAGE_WIDTH - authorWidth) / 2;
-  addThaiText(pdf, author, authorX, authorY, 'normal');
+  pdf.text(authorText, authorX, authorY);
   
-  // Contact (bottom right, within margins)
+  // Contact info (bottom right)
   if (contact) {
+    const contactText = normalizeThaiText(contact);
     const contactY = PAGE_HEIGHT - MARGIN_BOTTOM;
-    const contactWidth = getTextWidth(pdf, contact);
+    const contactWidth = pdf.getTextWidth(contactText);
     const contactX = PAGE_WIDTH - MARGIN_RIGHT - contactWidth;
-    addThaiText(pdf, contact, contactX, contactY, 'normal');
+    pdf.text(contactText, contactX, contactY);
   }
-}
+};
 
-export const exportToPDF = async (
+// Enhanced block rendering with proper scene numbers and parenthetical handling
+const renderStandardBlock = (
+  pdf: jsPDF,
+  block: Block,
+  y: number,
+  sceneNumber?: number,
+  dialogueNumber?: number,
+  transitionNumber?: number
+): number => {
+  const blockType = block.type as keyof typeof blockLayouts;
+  const layout = blockLayouts[blockType] || blockLayouts['action'];
+  
+  let text = processTextForPDF(block.content);
+  
+  // Apply text transformations
+  if (layout.uppercase && !containsThaiText(text)) {
+    text = text.toUpperCase();
+  }
+  
+  // Set font style
+  const fontWeight = layout.bold ? 'bold' : 'normal';
+  pdf.setFont('helvetica', fontWeight);
+  pdf.setFontSize(12);
+  pdf.setTextColor(0, 0, 0); // Pure black
+  
+  // Calculate positioning
+  const x = MARGIN_LEFT + layout.marginLeft + layout.indent;
+  const maxWidth = CONTENT_WIDTH - layout.marginLeft - layout.indent;
+  
+  // Handle right alignment for transitions
+  let finalX = x;
+  if (layout.rightAlign) {
+    const textWidth = pdf.getTextWidth(text);
+    finalX = MARGIN_LEFT + CONTENT_WIDTH - textWidth;
+  }
+  
+  // Split text into lines
+  const lines = splitThaiTextToSize(pdf, text, maxWidth);
+  const lineHeight = getLineHeight(text);
+  
+  // Render scene number OUTSIDE the margin (if scene heading)
+  if (blockType === 'scene-heading' && sceneNumber !== undefined) {
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(0, 0, 0); // Pure black for scene numbers
+    const sceneNumberText = `${sceneNumber}`;
+    pdf.text(sceneNumberText, SCENE_NUMBER_X, y);
+    // Reset font for scene heading text
+    pdf.setFont('helvetica', fontWeight);
+  }
+  
+  // Render each line
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Check for page break
+    if (y > PAGE_HEIGHT - MARGIN_BOTTOM - lineHeight) {
+      pdf.addPage();
+      y = MARGIN_TOP;
+    }
+    
+    // Adjust X position for right-aligned blocks
+    let lineX = finalX;
+    if (layout.rightAlign) {
+      const lineWidth = pdf.getTextWidth(line);
+      lineX = MARGIN_LEFT + CONTENT_WIDTH - lineWidth;
+    }
+    
+    // Render line
+    addThaiText(pdf, line, lineX, y, fontWeight);
+    
+    // Add dialogue number (last line only)
+    if (blockType === 'dialogue' && dialogueNumber !== undefined && i === lines.length - 1) {
+      pdf.setFont('helvetica', 'bold'); // Bold for dialogue numbers
+      pdf.setTextColor(0, 0, 0); // Pure black
+      const numberText = `${dialogueNumber}`;
+      const numberWidth = pdf.getTextWidth(numberText);
+      const numberX = MARGIN_LEFT + CONTENT_WIDTH - numberWidth;
+      pdf.text(numberText, numberX, y);
+    }
+    
+    // Add transition number (last line only)
+    if (blockType === 'transition' && transitionNumber !== undefined && i === lines.length - 1) {
+      pdf.setFont('helvetica', 'bold'); // Bold for transition numbers
+      pdf.setTextColor(0, 0, 0); // Pure black
+      const numberText = `${transitionNumber}`;
+      const numberWidth = pdf.getTextWidth(numberText);
+      const numberX = MARGIN_LEFT + CONTENT_WIDTH - numberWidth - 20; // Small offset
+      pdf.text(numberText, numberX, y);
+    }
+    
+    y += lineHeight;
+  }
+  
+  y += layout.spaceAfter || 0;
+  return y;
+};
+
+// Handle special parenthetical-dialogue combination
+const handleParentheticalDialogue = (
+  blocks: Block[],
+  index: number
+): { combinedBlock: Block | null, skipNext: boolean } => {
+  const currentBlock = blocks[index];
+  const nextBlock = blocks[index + 1];
+  
+  // Check if current is parenthetical and next is dialogue
+  if (currentBlock.type === 'parenthetical' && 
+      nextBlock && nextBlock.type === 'dialogue') {
+    
+    // Combine parenthetical with dialogue
+    const combinedContent = `${currentBlock.content} ${nextBlock.content}`;
+    
+    return {
+      combinedBlock: {
+        ...nextBlock,
+        content: combinedContent,
+        type: 'dialogue'
+      },
+      skipNext: true
+    };
+  }
+  
+  return { combinedBlock: null, skipNext: false };
+};
+
+// Main export function with standard formatting
+export const exportToStandardPDF = async (
   blocks: Block[],
   title: string = 'Untitled Screenplay',
   author: string = '',
   contact: string = ''
 ): Promise<void> => {
   try {
-    console.log('🚀 Starting PDF export with SHARP Thai support and PERFECT layout...');
-    
-    // Show loading indicator
+    // Loading indicator
     const loadingIndicator = document.createElement('div');
     loadingIndicator.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]';
     loadingIndicator.innerHTML = `
       <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl flex flex-col items-center">
         <div class="w-12 h-12 border-4 border-[#E86F2C] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-[#1E4D3A] dark:text-white font-medium">Generating Perfect Thai PDF...</p>
-        <p class="text-[#577B92] dark:text-gray-400 text-sm mt-1">Sharp text + Perfect layout control</p>
+        <p class="text-gray-700 dark:text-gray-300 font-medium">กำลังสร้าง PDF มาตรฐาน...</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">เลขฉากด้านซ้าย + จัดรูปแบบถูกต้อง</p>
       </div>
     `;
     document.body.appendChild(loadingIndicator);
-    
-    // Create PDF with high-quality settings
+
+    // Create PDF
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'pt',
-      format: 'a4',
-      compress: false,  // NO compression for sharp text
-      precision: 2      // High precision
+      format: 'a4'
     });
-    
-    // Setup sharp Thai rendering
-    setupThaiSupport(pdf);
-    enhanceTextQuality(pdf);
-    
-    // Add metadata
-    pdf.setProperties({
-      title: processTextForPDF(title),
-      author: processTextForPDF(author),
-      creator: 'LiQid Screenplay Writer - Sharp Thai PDF',
-      subject: 'Screenplay',
-      keywords: 'screenplay, script, movie, thai, ภาพยนตร์, บท'
-    });
-    
-    // Create title page
-    createTitlePage(pdf, title, author, contact);
-    
-    // Start content page
+
+    // Set default settings
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(12);
+    pdf.setTextColor(0, 0, 0);
+
+    // Add title page
+    createStandardTitlePage(pdf, title, author, contact);
     pdf.addPage();
-    enhanceTextQuality(pdf);
-    
-    let currentY = MARGIN_TOP;
-    let dialogueNumber = 1;
-    let sceneNumber = 1;
-    
-    // Process each block with PROPER LAYOUT CONTROL
-    for (const block of blocks) {
-      // Skip empty blocks
-      if (!block.content.trim()) continue;
+
+    // Process content blocks
+    let y = MARGIN_TOP;
+    let sceneNumber = 0;
+    let dialogueNumber = 0;
+    let transitionNumber = 0;
+
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
       
-      const layout = LAYOUT_POSITIONS[block.type as keyof typeof LAYOUT_POSITIONS] || LAYOUT_POSITIONS['action'];
-      
-      // Calculate text position
-      const textX = MARGIN_LEFT + layout.marginLeft;
-      const maxWidth = CONTENT_WIDTH - layout.marginLeft;
-      
-      // Process text
-      let text = block.content;
-      
-      // Add scene number for scene headings
-      if (block.type === 'scene-heading') {
-        text = `${sceneNumber}. ${text}`;
-        sceneNumber++;
-      }
-      
-      if (layout.uppercase && !containsThaiText(text)) {
-        text = text.toUpperCase();
-      }
-      
-      // Split text to fit within margins (PREVENTS OVERFLOW)
-      const lines = splitThaiTextToSize(pdf, text, maxWidth);
-      
-      // Check if we need a page break BEFORE adding content
-      currentY = addPageBreakIfNeeded(pdf, currentY, lines.length);
-      
-      // Add each line with proper layout control
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        // Ensure we're still within page bounds
-        if (!willTextFitOnPage(pdf, currentY, 1)) {
-          pdf.addPage();
-          enhanceTextQuality(pdf);
-          currentY = MARGIN_TOP;
-        }
-        
-        // Calculate text position based on alignment
-        let finalTextX = textX;
-        if (layout.alignRight) {
-          // For right-aligned text (transitions), position flush to right margin
-          const lineWidth = getTextWidth(pdf, line);
-          finalTextX = PAGE_WIDTH - MARGIN_RIGHT - lineWidth;
-        }
-        
-        // Add text with layout validation
-        const style = layout.bold ? 'bold' : 'normal';
-        addThaiText(pdf, line, finalTextX, currentY, style);
-        
-        // Add dialogue numbers (if applicable) - flush to right margin like transitions
-        if (block.type === 'dialogue' && i === 0) {
-          const numberText = `${dialogueNumber}`;
-          const numberWidth = getTextWidth(pdf, numberText);
-          const numberX = PAGE_WIDTH - MARGIN_RIGHT - numberWidth; // Flush to right margin
-          addThaiText(pdf, numberText, numberX, currentY, 'normal');
+      // Handle parenthetical-dialogue combinations
+      const parentheticalResult = handleParentheticalDialogue(blocks, i);
+      if (parentheticalResult.combinedBlock) {
+        // Use combined block and skip next
+        const combinedBlock = parentheticalResult.combinedBlock;
+        if (combinedBlock.type === 'dialogue') {
           dialogueNumber++;
         }
         
-        currentY += LINE_HEIGHT;
+        y = renderStandardBlock(
+          pdf,
+          combinedBlock,
+          y,
+          undefined,
+          dialogueNumber,
+          undefined
+        );
+        
+        i++; // Skip the next block since we combined it
+        continue;
       }
       
-      // Add spacing after block
-      currentY += LINE_HEIGHT * 0.5;
+      // Count scene, dialogue, and transition numbers
+      if (block.type === 'scene-heading') {
+        sceneNumber++;
+      } else if (block.type === 'dialogue') {
+        dialogueNumber++;
+      } else if (block.type === 'transition') {
+        transitionNumber++;
+      }
+      
+      // Render block with appropriate numbers
+      y = renderStandardBlock(
+        pdf,
+        block,
+        y,
+        block.type === 'scene-heading' ? sceneNumber : undefined,
+        block.type === 'dialogue' ? dialogueNumber : undefined,
+        block.type === 'transition' ? transitionNumber : undefined
+      );
     }
+
+    // Save PDF
+    const fileName = `${title.replace(/[^a-zA-Z0-9ก-๙\s]/g, '') || 'screenplay'}_standard_${new Date().toISOString().split('T')[0]}.pdf`;
     
-    // Create safe filename
-    const safeFilename = title
-      .replace(/[^a-zA-Z0-9ก-๙\s]/g, '') // Allow Thai characters
-      .replace(/\s+/g, '_')
-      .toLowerCase() + '_perfect.pdf';
-    
-    pdf.save(safeFilename);
-    
-    // Remove loading indicator
     document.body.removeChild(loadingIndicator);
+    pdf.save(fileName);
     
-    console.log('✅ PDF exported successfully with SHARP Thai text and PERFECT layout!');
-    console.log('📄 Features: Sharp text rendering + No overflow + Perfect margins + Smart page breaks');
+    console.log('Standard screenplay PDF exported successfully');
     
   } catch (error) {
-    console.error('❌ Error generating perfect Thai PDF:', error);
-    
-    // Remove loading indicator if it exists
+    // Clean up loading indicator
     const loadingIndicator = document.querySelector('.fixed.inset-0.bg-black\\/50');
-    if (loadingIndicator && loadingIndicator.parentNode) {
-      loadingIndicator.parentNode.removeChild(loadingIndicator);
+    if (loadingIndicator) {
+      document.body.removeChild(loadingIndicator);
     }
     
-    // Show error message
-    alert('Failed to generate PDF. Please try again.');
+    console.error('Error exporting standard PDF:', error);
     throw error;
   }
 };
 
-export const exportScreenplayToPDF = async (
-  contentElement: HTMLElement | null,
-  pages: HTMLElement[],
+// Enhanced export with better scene detection
+export const exportToEnhancedStandardPDF = async (
+  blocks: Block[],
   title: string = 'Untitled Screenplay',
-  author: string = 'Anonymous'
+  author: string = '',
+  contact: string = ''
 ): Promise<void> => {
-  if (!contentElement || !pages.length) {
-    console.error('No content or pages provided for PDF export');
-    return;
-  }
-
   try {
-    // Show loading indicator
     const loadingIndicator = document.createElement('div');
     loadingIndicator.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]';
     loadingIndicator.innerHTML = `
       <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl flex flex-col items-center">
         <div class="w-12 h-12 border-4 border-[#E86F2C] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-[#1E4D3A] dark:text-white font-medium">Generating Perfect Thai PDF...</p>
-        <p class="text-[#577B92] dark:text-gray-400 text-sm mt-1">Sharp text + Perfect layout control</p>
+        <p class="text-gray-700 dark:text-gray-300 font-medium">กำลังสร้าง PDF มาตรฐานที่ปรับปรุงแล้ว...</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">เลขฉากชัด + จัดรูปแบบเป็นมาตรฐาน</p>
       </div>
     `;
     document.body.appendChild(loadingIndicator);
 
-    // Get screenplay blocks from the editor state
-    const blocks = (window as any).screenplay?.state?.blocks;
-    
-    if (!blocks || !Array.isArray(blocks)) {
-      throw new Error('Could not access screenplay blocks data');
-    }
-    
-    // Get header information
-    const header = (window as any).screenplay?.state?.header || {
-      title: title || 'Untitled Screenplay',
-      author: author || 'Anonymous',
-      contact: ''
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: 'a4'
+    });
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(12);
+    pdf.setTextColor(0, 0, 0);
+
+    // Title page
+    createStandardTitlePage(pdf, title, author, contact);
+    pdf.addPage();
+
+    // Enhanced block processing
+    let y = MARGIN_TOP;
+    const counters = {
+      scene: 0,
+      dialogue: 0,
+      transition: 0
     };
+
+    // Pre-process blocks to handle special cases
+    const processedBlocks: Array<{block: Block, numbers: any}> = [];
     
-    // Export using the perfect Thai PDF method
-    await exportToPDF(
-      blocks,
-      header.title || title,
-      header.author || author,
-      header.contact || ''
-    );
-    
-    // Remove loading indicator
-    document.body.removeChild(loadingIndicator);
-  } catch (error) {
-    console.error('Error generating perfect Thai PDF:', error);
-    
-    // Remove loading indicator if it exists
-    const loadingIndicator = document.querySelector('.fixed.inset-0.bg-black\\/50');
-    if (loadingIndicator && loadingIndicator.parentNode) {
-      loadingIndicator.parentNode.removeChild(loadingIndicator);
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[i];
+      
+      // Count numbers
+      if (block.type === 'scene-heading') counters.scene++;
+      if (block.type === 'dialogue') counters.dialogue++;
+      if (block.type === 'transition') counters.transition++;
+      
+      // Handle parenthetical combinations
+      if (block.type === 'parenthetical' && 
+          i + 1 < blocks.length && 
+          blocks[i + 1].type === 'dialogue') {
+        
+        // Combine with next dialogue
+        const dialogueBlock = blocks[i + 1];
+        const combinedContent = `${block.content} ${dialogueBlock.content}`;
+        
+        processedBlocks.push({
+          block: {
+            ...dialogueBlock,
+            content: combinedContent
+          },
+          numbers: {
+            scene: undefined,
+            dialogue: counters.dialogue,
+            transition: undefined
+          }
+        });
+        
+        i++; // Skip next block
+      } else {
+        processedBlocks.push({
+          block,
+          numbers: {
+            scene: block.type === 'scene-heading' ? counters.scene : undefined,
+            dialogue: block.type === 'dialogue' ? counters.dialogue : undefined,
+            transition: block.type === 'transition' ? counters.transition : undefined
+          }
+        });
+      }
     }
+
+    // Render processed blocks
+    for (const item of processedBlocks) {
+      y = renderStandardBlock(
+        pdf,
+        item.block,
+        y,
+        item.numbers.scene,
+        item.numbers.dialogue,
+        item.numbers.transition
+      );
+    }
+
+    // Save with descriptive filename
+    const fileName = `${title.replace(/[^a-zA-Z0-9ก-๙\s]/g, '') || 'screenplay'}_enhanced_standard_${new Date().toISOString().split('T')[0]}.pdf`;
     
-    // Show error message
-    alert('Failed to generate perfect Thai PDF. Please try again.');
+    document.body.removeChild(loadingIndicator);
+    pdf.save(fileName);
+    
+    console.log('Enhanced standard screenplay PDF exported successfully');
+    
+  } catch (error) {
+    const loadingIndicator = document.querySelector('.fixed.inset-0.bg-black\\/50');
+    if (loadingIndicator) {
+      document.body.removeChild(loadingIndicator);
+    }
+    console.error('Error in enhanced standard PDF export:', error);
+    throw error;
   }
 };

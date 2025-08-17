@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { Block } from '../types';
 
 interface UseBlockFormattingProps {
@@ -8,6 +9,7 @@ interface UseBlockFormattingProps {
   addToHistory: (blocks: Block[]) => void;
   setHasChanges?: (hasChanges: boolean) => void;
   blockRefs: React.MutableRefObject<Record<string, HTMLDivElement | null>>;
+  setActiveBlock?: (blockId: string) => void;
 }
 
 export const useBlockFormatting = ({
@@ -16,7 +18,8 @@ export const useBlockFormatting = ({
   updateBlocks,
   addToHistory,
   setHasChanges,
-  blockRefs
+  blockRefs,
+  setActiveBlock
 }: UseBlockFormattingProps) => {
   /**
    * Changes the format of the active block
@@ -112,6 +115,11 @@ export const useBlockFormatting = ({
         return block;
       });
 
+      // Update activeBlock if the block ID changed - BEFORE updating blocks
+      if (newBlockId !== activeBlock && setActiveBlock) {
+        setActiveBlock(newBlockId);
+      }
+
       updateBlocks(updatedBlocks);
 
       setTimeout(() => {
@@ -167,6 +175,3 @@ export const useBlockFormatting = ({
     handleFormatChange
   };
 };
-
-// Import uuid for generating new block IDs
-import { v4 as uuidv4 } from 'uuid';

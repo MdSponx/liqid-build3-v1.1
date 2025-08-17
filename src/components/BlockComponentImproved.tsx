@@ -394,22 +394,34 @@ const BlockComponentImproved: React.FC<ExtendedBlockComponentProps> = ({
 
   // Enhanced keyboard handling that properly prevents conflicts with suggestions
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    // If processing a selection, block all Enter events
-    if (isProcessingSelection && e.key === 'Enter') {
+    // If suggestions are active, only allow Tab key to pass through for block type cycling
+    if (showSuggestions) {
+      console.log('📝 Suggestions active - checking key:', e.key);
+      if (e.key === 'Tab') {
+        console.log('📝 Tab key detected - allowing parent handler for block type cycling');
+        // Allow Tab key to pass through for block type cycling
+        onKeyDown(e, block.id);
+        return;
+      }
+      // For all other keys when suggestions are active, don't do anything
+      console.log('📝 Non-Tab key - delegating to suggestion controller');
+      return;
+    }
+    
+    // If suggestion is processing, block all events except Tab
+    if (isProcessingSuggestion) {
+      if (e.key === 'Tab') {
+        console.log('⏳ Tab key during processing - allowing for block type cycling');
+        onKeyDown(e, block.id);
+        return;
+      }
+      console.log('⏳ Suggestion processing - blocking event:', e.key);
       e.preventDefault();
       e.stopPropagation();
       return;
     }
     
-    // If suggestions are showing and this is a navigation/selection key, prevent parent handling
-    if (showSuggestions && ['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
-      // Stop the event from bubbling to parent components
-      e.stopPropagation();
-      // Don't call onKeyDown for these keys when suggestions are active
-      return;
-    }
-    
-    // For all other keys, pass to parent component
+    // For all other cases, forward to parent handler
     onKeyDown(e, block.id);
     
     // Update current input for suggestion filtering
@@ -420,7 +432,7 @@ const BlockComponentImproved: React.FC<ExtendedBlockComponentProps> = ({
         updateSuggestionsPosition();
       }, 0);
     }
-  }, [showSuggestions, onKeyDown, block.id, updateSuggestionsPosition, isProcessingSelection]);
+  }, [showSuggestions, isProcessingSuggestion, onKeyDown, block.id, updateSuggestionsPosition]);
 
   // Enhanced input handling - Fixed to use contentElement ref instead of event target
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
