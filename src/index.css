@@ -633,13 +633,37 @@ body {
   color: rgba(232, 111, 44, 1);
 }
 
-/* Highlighted text for comments */
+/* Highlighted text for comments with cursor jumping fix */
 .comment-highlight {
   background-color: rgba(232, 111, 44, 0.2);
   border-bottom: 1px solid rgba(232, 111, 44, 0.5);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  /* Cursor jumping fix: Prevent text selection inside highlights */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Cursor jumping fix: Special data attribute for enhanced behavior */
+.comment-highlight[data-cursor-fix="true"] {
+  /* Ensure proper text flow around highlights */
+  display: inline;
+  white-space: nowrap;
+}
+
+/* Cursor jumping fix: Prevent highlights from capturing new text */
+.comment-highlight::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .dark .comment-highlight {

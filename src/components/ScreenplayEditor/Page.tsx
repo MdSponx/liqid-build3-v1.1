@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import BlockComponentImproved from '../BlockComponentImproved';
+import BlockComponentStable from '../BlockComponentStable';
 import PageHeader from './PageHeader';
 import { CharacterDocument, ElementDocument, UniqueSceneHeadingDocument, Comment } from '../../types';
 
@@ -183,7 +183,7 @@ const Page: React.FC<PageProps> = ({
         onDoubleClick={handleContainerDoubleClick}
       >
         {blocks.map((block) => (
-          <BlockComponentImproved
+          <BlockComponentStable
             key={block.id}
             block={block}
             isDarkMode={isDarkMode}

@@ -9,7 +9,7 @@ import { organizeBlocksIntoPages } from '../utils/blockUtils';
 import { collection, addDoc, serverTimestamp, Timestamp, getDocs, query, orderBy, doc, updateDoc, getDoc, setDoc, where, arrayUnion, arrayRemove, FieldValue, increment, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { v4 as uuidv4 } from 'uuid';
-import BlockComponentImproved from './BlockComponentImproved';
+import BlockComponentStable from './BlockComponentStable';
 import FormatButtons from './ScreenplayEditor/FormatButtons';
 import Page from './ScreenplayEditor/Page';
 import { useHotkeys } from '../hooks/useHotkeys';
