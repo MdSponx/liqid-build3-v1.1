@@ -260,13 +260,18 @@ body {
   user-select: text;
 }
 
-/* Allow text selection across blocks */
+/* Block container selection behavior - UPDATED for drag selection */
 .block-container {
-  user-select: text; /* Allow text selection */
+  user-select: none; /* Prevent text selection on container for drag selection */
+  position: relative;
+  transition: all 0.2s ease-out;
 }
 
 .block-editor {
-  user-select: text; /* Ensure content inside editable blocks remains selectable */
+  user-select: text; /* Allow text selection inside contenteditable elements */
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .user-select-text {
@@ -274,6 +279,22 @@ body {
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
+}
+
+/* Drag selection states */
+.block-container.drag-selectable {
+  cursor: crosshair;
+}
+
+.block-container.drag-selecting {
+  background-color: rgba(232, 111, 44, 0.05);
+  border: 1px dashed rgba(232, 111, 44, 0.3);
+  border-radius: 4px;
+}
+
+.dark .block-container.drag-selecting {
+  background-color: rgba(232, 111, 44, 0.1);
+  border-color: rgba(232, 111, 44, 0.4);
 }
 
 /* Compact parenthetical blocks */
@@ -298,12 +319,28 @@ body {
   transform: scale(1.02);
 }
 
+/* Enhanced multi-block selection styles */
 .screenplay-block[data-selected="true"] {
   background-color: rgba(232, 111, 44, 0.1);
+  border-left: 4px solid rgba(232, 111, 44, 0.8);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(232, 111, 44, 0.15);
 }
 
 .dark .screenplay-block[data-selected="true"] {
   background-color: rgba(232, 111, 44, 0.2);
+  border-left: 4px solid rgba(232, 111, 44, 0.9);
+  box-shadow: 0 2px 8px rgba(232, 111, 44, 0.25);
+}
+
+/* Hover states for better visual feedback */
+.screenplay-block:hover:not([data-selected="true"]) {
+  background-color: rgba(232, 111, 44, 0.05);
+  transition: background-color 0.2s ease;
+}
+
+.dark .screenplay-block:hover:not([data-selected="true"]) {
+  background-color: rgba(232, 111, 44, 0.1);
 }
 
 .screenplay-block [contenteditable] {
@@ -360,33 +397,131 @@ body {
   color: inherit;
 }
 
-/* Multi-block selection styles */
+/* Enhanced multi-block selection styles */
+.screenplay-block.multi-selected {
+  background-color: rgba(232, 111, 44, 0.1);
+  border-left: 4px solid rgba(232, 111, 44, 0.8);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(232, 111, 44, 0.15);
+}
+
+.dark .screenplay-block.multi-selected {
+  background-color: rgba(232, 111, 44, 0.2);
+  border-left: 4px solid rgba(232, 111, 44, 0.9);
+  box-shadow: 0 2px 8px rgba(232, 111, 44, 0.25);
+}
+
 .screenplay-block.multi-selected [contenteditable] {
+  background-color: transparent; /* Let the block background show through */
+}
+
+/* Enhanced visual feedback for drag selection */
+.screenplay-block.drag-selecting {
+  background-color: rgba(232, 111, 44, 0.08);
+  border: 1px dashed rgba(232, 111, 44, 0.4);
+  border-radius: 6px;
+  transform: scale(1.01);
+  transition: all 0.15s ease;
+}
+
+.dark .screenplay-block.drag-selecting {
   background-color: rgba(232, 111, 44, 0.15);
+  border-color: rgba(232, 111, 44, 0.5);
 }
 
-.dark .screenplay-block.multi-selected [contenteditable] {
-  background-color: rgba(232, 111, 44, 0.25);
-}
-
-/* Visual feedback for drag selection */
-.screenplay-block.drag-selecting::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border: 2px dashed rgba(232, 111, 44, 0.5);
-  border-radius: 4px;
-  pointer-events: none;
-  z-index: 3;
-}
-
-/* Drag selection overlay */
+/* Enhanced drag selection overlay */
 #drag-selection-overlay {
   position: fixed;
-  border: 1px solid rgba(232, 111, 44, 0.5);
+  border: 2px solid rgba(232, 111, 44, 0.6);
   background-color: rgba(232, 111, 44, 0.1);
   pointer-events: none;
   z-index: 1000;
+  border-radius: 4px;
+  backdrop-filter: blur(1px);
+  box-shadow: 0 0 20px rgba(232, 111, 44, 0.2);
+}
+
+.dark #drag-selection-overlay {
+  background-color: rgba(232, 111, 44, 0.15);
+  border-color: rgba(232, 111, 44, 0.7);
+  box-shadow: 0 0 20px rgba(232, 111, 44, 0.3);
+}
+
+/* Selection counter and keyboard hints */
+.selection-indicator {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(232, 111, 44, 0.95);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 20px rgba(232, 111, 44, 0.3);
+  backdrop-filter: blur(10px);
+  z-index: 1001;
+  transition: all 0.3s ease;
+  animation: slideUp 0.3s ease;
+}
+
+.dark .selection-indicator {
+  background: rgba(232, 111, 44, 0.9);
+  box-shadow: 0 4px 20px rgba(232, 111, 44, 0.4);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.keyboard-hints {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  color: #1e293b;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  z-index: 1001;
+  transition: all 0.3s ease;
+  animation: slideUp 0.3s ease 0.1s both;
+}
+
+.dark .keyboard-hints {
+  background: rgba(30, 41, 59, 0.95);
+  color: #e2e8f0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.keyboard-hints .hint {
+  display: inline-block;
+  margin: 0 8px;
+}
+
+.keyboard-hints .key {
+  background: rgba(232, 111, 44, 0.1);
+  color: rgba(232, 111, 44, 0.9);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.dark .keyboard-hints .key {
+  background: rgba(232, 111, 44, 0.2);
+  color: rgba(232, 111, 44, 1);
 }
 
 /* Highlighted text for comments */

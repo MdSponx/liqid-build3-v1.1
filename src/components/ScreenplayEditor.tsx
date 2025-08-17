@@ -13,6 +13,7 @@ import BlockComponentImproved from './BlockComponentImproved';
 import FormatButtons from './ScreenplayEditor/FormatButtons';
 import Page from './ScreenplayEditor/Page';
 import { useHotkeys } from '../hooks/useHotkeys';
+import { useDragSelection } from '../hooks/useDragSelection';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useAuth } from '../contexts/AuthContext';
 import ScreenplayNavigator from './ScreenplayNavigator';
@@ -20,6 +21,7 @@ import SceneNavigator from './SceneNavigator/SceneNavigator';
 import CharacterManager from './CharacterManager/CharacterManager';
 import SceneHeadingPanel from './SceneHeadingPanel/SceneHeadingPanel';
 import CommentsPanel from './ScreenplayEditor/CommentsPanel'; // Import the new CommentsPanel
+import ClipboardNotification from './ClipboardNotification';
 import type { Block, PersistedEditorState, CharacterDocument, SceneDocument, UniqueSceneHeadingDocument, Comment, UserMention } from '../types';
 import type { Scene } from '../hooks/useScenes';
 import { Layers, Users, Type, MessageSquare } from 'lucide-react';
@@ -73,6 +75,7 @@ const ScreenplayEditor: React.FC = () => {
   } = useEditorState(projectId, screenplayId);
 
   const blockRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const {
     isSaving,
@@ -364,6 +367,18 @@ const ScreenplayEditor: React.FC = () => {
       setState(prev => ({ ...prev, selectedBlocks: blocksOrFunction }));
     }
   }, [setState]);
+
+  // Initialize drag selection hook
+  const { isDragging, handleBlockCtrlClick, copySelectedBlocks, cutSelectedBlocks, pasteBlocks, deleteSelectedBlocks, clipboardCount, notification, handleNotificationDismiss } = useDragSelection({
+    blocks: state.blocks,
+    selectedBlocks: state.selectedBlocks,
+    setSelectedBlocks,
+    containerRef,
+    blockRefs,
+    updateBlocks,
+    addToHistory,
+    setHasChanges
+  });
 
   // Create a wrapper function that matches the expected signature
   const onSceneHeadingUpdate = useCallback(async () => {
@@ -1151,9 +1166,13 @@ const ScreenplayEditor: React.FC = () => {
         <div className="flex flex-1 overflow-hidden">
           {/* Screenplay content area */}
           <div 
-            ref={editorScrollRef}
+            ref={(el) => {
+              // Use type assertion to handle the readonly property
+              (editorScrollRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+              (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+            }}
             onScroll={handleScroll}
-            className={`flex-1 overflow-auto screenplay-content relative user-select-text ${showPanel ? 'ml-80' : ''} ${showCommentsPanel ? 'mr-80' : ''}`} 
+            className={`flex-1 overflow-auto screenplay-content relative user-select-text ${showPanel ? 'ml-80' : ''} ${showCommentsPanel ? 'mr-80' : ''} ${isDragging ? 'drag-selecting' : ''}`} 
             data-screenplay-editor="true"
           >
             <div 
@@ -1187,7 +1206,10 @@ const ScreenplayEditor: React.FC = () => {
                         onContentChange={handleContentChange}
                         onKeyDown={handleKeyDown}
                         onBlockFocus={(id) => setState(prev => ({ ...prev, activeBlock: id }))}
-                        onBlockClick={handleBlockClick}
+                        onBlockClick={(id, e) => {
+                          handleBlockClick(id, e);
+                          handleBlockCtrlClick(id, e);
+                        }}
                         onBlockDoubleClick={handleBlockDoubleClick}
                         onBlockMouseDown={handleMouseDown}
                         selectedBlocks={state.selectedBlocks}
@@ -1272,6 +1294,59 @@ const ScreenplayEditor: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Selection indicator and keyboard hints */}
+      {(state.selectedBlocks.size > 0 || clipboardCount > 0) && (
+        <>
+          <div className="selection-indicator">
+            {state.selectedBlocks.size > 0 && (
+              <>
+                {state.selectedBlocks.size} block{state.selectedBlocks.size > 1 ? 's' : ''} selected
+              </>
+            )}
+            {clipboardCount > 0 && (
+              <span className="clipboard-indicator">
+                {state.selectedBlocks.size > 0 ? ' • ' : ''}{clipboardCount} in clipboard
+              </span>
+            )}
+          </div>
+          <div className="keyboard-hints">
+            <span className="hint">
+              <span className="key">Ctrl+A</span> Select All
+            </span>
+            {state.selectedBlocks.size > 0 && (
+              <>
+                <span className="hint">
+                  <span className="key">Ctrl+C</span> Copy
+                </span>
+                <span className="hint">
+                  <span className="key">Ctrl+X</span> Cut
+                </span>
+                <span className="hint">
+                  <span className="key">Del</span> Delete
+                </span>
+              </>
+            )}
+            {clipboardCount > 0 && (
+              <span className="hint">
+                <span className="key">Ctrl+V</span> Paste
+              </span>
+            )}
+            <span className="hint">
+              <span className="key">Esc</span> Clear Selection
+            </span>
+            <span className="hint">
+              <span className="key">Ctrl+Click</span> Add/Remove
+            </span>
+          </div>
+        </>
+      )}
+
+      {/* Clipboard Notification */}
+      <ClipboardNotification
+        notification={notification}
+        onDismiss={handleNotificationDismiss}
+      />
 
       {saveError && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg">

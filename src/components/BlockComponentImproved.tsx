@@ -956,7 +956,7 @@ const BlockComponentImproved: React.FC<ExtendedBlockComponentProps> = ({
     <div 
       className={`relative screenplay-block block-container ${getBlockMargin(block.type)} ${
         isSelected ? 'selecting' : ''
-      } ${isSelected ? 'multi-selected' : ''}`}
+      } ${isSelected ? 'multi-selected' : ''} drag-selectable`}
       onClick={(e) => onClick(block.id, e)}
       onMouseDown={(e) => onMouseDown(block.id, e)}
       onDoubleClick={handleDoubleClickInternal}
