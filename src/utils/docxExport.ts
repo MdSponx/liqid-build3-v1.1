@@ -15,7 +15,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { Block } from '../types';
-import { docxStyles, pageSetup, headerSetup } from './docxStyles';
+import { docxStyles, pageSetup, headerSetup, THAI_LAYOUT } from './docxStyles';
 
 /**
  * Generates DOCX paragraphs from screenplay blocks
@@ -37,32 +37,45 @@ export const generateDocxParagraphs = (blocks: Block[]): Paragraph[] => {
     
     switch (block.type) {
       case 'scene-heading':
-        // Pre-compose paragraph configuration for scene heading
+        // Thai screenplay format: scene number at far left, heading after tab stop
         const sceneHeadingParagraphConfig = {
           spacing: {
             before: docxStyles.sceneHeading.spacing.before,
             after: docxStyles.sceneHeading.spacing.after,
             line: docxStyles.default.spacing.line
-          }
+          },
+          tabStops: [
+            {
+              type: TabStopType.LEFT,
+              position: THAI_LAYOUT.sceneHeadingTabStop
+            }
+          ]
         };
         
-        // Create paragraph with scene number on the left side
+        // Create paragraph with scene number at far left and heading after tab
         paragraph = new Paragraph({
           ...sceneHeadingParagraphConfig,
           children: [
-            // Left scene number
+            // Scene number at far left (no highlight)
             new TextRun({
-              text: `${sceneCounter}. `,
+              text: `${sceneCounter}`,
               bold: docxStyles.sceneHeading.bold,
               size: docxStyles.default.size,
               font: docxStyles.default.font
             }),
-            // Scene heading text
+            // Tab to scene heading position
+            new TextRun({
+              text: "\t",
+              size: docxStyles.default.size,
+              font: docxStyles.default.font
+            }),
+            // Scene heading text with simple grey highlight
             new TextRun({
               text: block.content.toUpperCase(),
               bold: docxStyles.sceneHeading.bold,
               size: docxStyles.default.size,
-              font: docxStyles.default.font
+              font: docxStyles.default.font,
+              highlight: "lightGray" // Simple grey highlight on text only
             })
           ]
         });
@@ -77,6 +90,9 @@ export const generateDocxParagraphs = (blocks: Block[]): Paragraph[] => {
             before: docxStyles.action.spacing.before,
             after: docxStyles.action.spacing.after,
             line: docxStyles.default.spacing.line
+          },
+          indent: {
+            left: THAI_LAYOUT.bodyTextIndent
           }
         };
         
@@ -142,7 +158,7 @@ export const generateDocxParagraphs = (blocks: Block[]): Paragraph[] => {
         break;
         
       case 'dialogue':
-        // Pre-compose paragraph configuration for dialogue with right-aligned tab stop
+        // Single paragraph with dialogue text and right-aligned number using tab stop
         const dialogueParagraphConfig = {
           spacing: {
             before: docxStyles.dialogue.spacing.before,
@@ -156,12 +172,12 @@ export const generateDocxParagraphs = (blocks: Block[]): Paragraph[] => {
           tabStops: [
             {
               type: TabStopType.RIGHT,
-              position: 9000 // Right margin position
+              position: THAI_LAYOUT.dialogueNumberTabStop // Right edge position
             }
           ]
         };
         
-        // Create paragraph with dialogue text and number on the right
+        // Create single paragraph with dialogue text and number on same line
         paragraph = new Paragraph({
           ...dialogueParagraphConfig,
           children: [
@@ -171,7 +187,7 @@ export const generateDocxParagraphs = (blocks: Block[]): Paragraph[] => {
               size: docxStyles.default.size,
               font: docxStyles.default.font
             }),
-            // Tab to right margin
+            // Tab to right margin for number
             new TextRun({
               text: "\t",
               size: docxStyles.default.size,
@@ -219,6 +235,9 @@ export const generateDocxParagraphs = (blocks: Block[]): Paragraph[] => {
             before: docxStyles.shot.spacing.before,
             after: docxStyles.shot.spacing.after,
             line: docxStyles.default.spacing.line
+          },
+          indent: {
+            left: THAI_LAYOUT.bodyTextIndent
           }
         };
         
@@ -242,6 +261,9 @@ export const generateDocxParagraphs = (blocks: Block[]): Paragraph[] => {
             before: docxStyles.text.spacing.before,
             after: docxStyles.text.spacing.after,
             line: docxStyles.default.spacing.line
+          },
+          indent: {
+            left: THAI_LAYOUT.bodyTextIndent
           }
         };
         

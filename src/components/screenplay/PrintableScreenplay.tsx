@@ -25,88 +25,88 @@ const PrintableScreenplay = React.forwardRef<HTMLDivElement, PrintableScreenplay
     let sceneNumber = 1;
     let dialogNumber = 1;
 
-    const renderScriptBlock = (block: Block, index: number) => {
-      let content = block.content;
-      let rightRailContent = '';
-      let hasRightRail = false;
-      let sceneNumberElement = null;
-
-      // Handle scene headings with separate scene number
+    const renderBlock = (block: Block, index: number) => {
+      const blockKey = block.id || `${index}-${block.type}`;
+      
+      // Scene heading - Scene Number + Scene Heading on same line
       if (block.type === 'scene-heading') {
-        sceneNumberElement = (
-          <div className="script-row--single">
-            <div className="scene-number">{sceneNumber}.</div>
+        const currentSceneNumber = sceneNumber++;
+        return (
+          <div key={blockKey} className="script-element scene-line" data-block-type="scene-heading">
+            <span className="sceneNumber">{currentSceneNumber}</span>
+            <span className="scene">{block.content.toUpperCase()}</span>
           </div>
         );
-        sceneNumber++;
       }
 
-      // Add dialog numbers to dialogue blocks
-      if (block.type === 'dialogue') {
-        rightRailContent = `${dialogNumber}`;
-        hasRightRail = true;
-        dialogNumber++;
-      }
-
-      // Transitions go in the right rail
-      if (block.type === 'transition') {
-        rightRailContent = content;
-        content = '';
-        hasRightRail = true;
-      }
-
-      // Determine grid layout class
-      const gridClass = hasRightRail ? 'script-row' : 'script-row--single';
-
-      return (
-        <React.Fragment key={block.id || index}>
-          {/* Scene number (if applicable) */}
-          {sceneNumberElement}
-          
-          {/* Main content block */}
-          <div className={`${gridClass} block-${block.type}`} data-block-type={block.type}>
-            {/* Left column - main content */}
-            <div className="script-content">
-              {content && (
-                <>
-                  {block.type === 'scene-heading' && (
-                    <div className="scene-heading">{content}</div>
-                  )}
-                  {block.type === 'action' && (
-                    <div className="action">{content}</div>
-                  )}
-                  {block.type === 'character' && (
-                    <div className="character">{content}</div>
-                  )}
-                  {block.type === 'dialogue' && (
-                    <div className="dialogue">{content}</div>
-                  )}
-                  {block.type === 'parenthetical' && (
-                    <div className="parenthetical">({content})</div>
-                  )}
-                  {block.type === 'text' && (
-                    <div className="text">{content}</div>
-                  )}
-                  {block.type === 'shot' && (
-                    <div className="shot">{content}</div>
-                  )}
-                </>
-              )}
-            </div>
-            
-            {/* Right column - rail content (transitions, dialog numbers) */}
-            {hasRightRail && (
-              <div className="rail-right">
-                {rightRailContent}
-              </div>
-            )}
+      // Action/description blocks
+      if (block.type === 'action' || block.type === 'text') {
+        return (
+          <div key={blockKey} className="script-element action" data-block-type={block.type}>
+            {block.content}
           </div>
-        </React.Fragment>
+        );
+      }
+
+      // Character name - ALL CAPS
+      if (block.type === 'character') {
+        return (
+          <div key={blockKey} className="script-element character" data-block-type="character">
+            {block.content.toUpperCase()}
+          </div>
+        );
+      }
+
+      // Dialogue
+      if (block.type === 'dialogue') {
+        const currentDialogNumber = dialogNumber++;
+        return (
+          <div key={blockKey} className="script-element dialogue" data-block-type="dialogue">
+            {block.content}
+            <span className="dialogue-number">{currentDialogNumber}</span>
+          </div>
+        );
+      }
+
+      // Parenthetical
+      if (block.type === 'parenthetical') {
+        return (
+          <div key={blockKey} className="script-element paren" data-block-type="parenthetical">
+            ({block.content})
+          </div>
+        );
+      }
+
+      // Shot descriptions - ALL CAPS
+      if (block.type === 'shot') {
+        return (
+          <div key={blockKey} className="script-element shot" data-block-type="shot">
+            {block.content.toUpperCase()}
+          </div>
+        );
+      }
+
+      // Transitions - right-aligned with colon
+      if (block.type === 'transition') {
+        const transitionText = block.content.toUpperCase();
+        const hasColon = transitionText.endsWith(':');
+        return (
+          <div key={blockKey} className="script-element transition" data-block-type="transition">
+            {hasColon ? transitionText : `${transitionText}:`}
+          </div>
+        );
+      }
+
+      // Default fallback
+      return (
+        <div key={blockKey} className="script-element action" data-block-type={block.type}>
+          {block.content}
+        </div>
       );
     };
 
     return (
-      <div ref={ref} className="printable-screenplay">
+      <div ref={ref} className="script-document">
         {/* COVER PAGE - visible only on print */}
         <div className="print-only cover-page">
           {posterUrl && (
@@ -127,9 +127,9 @@ const PrintableScreenplay = React.forwardRef<HTMLDivElement, PrintableScreenplay
         {/* Force page break after cover */}
         <div className="print-only page-break-after"></div>
 
-        {/* SCRIPT BODY */}
-        <div className="script">
-          {blocks.map((block, index) => renderScriptBlock(block, index))}
+        {/* SCRIPT CONTENT */}
+        <div className="script-content">
+          {blocks.map((block, index) => renderBlock(block, index))}
         </div>
       </div>
     );

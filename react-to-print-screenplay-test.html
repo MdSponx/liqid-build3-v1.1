@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hollywood Standard Screenplay Test</title>
+    <style>
+        /* Import Thai monospace font */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@400;700&family=Noto+Sans+Thai:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans Thai', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .test-button {
+            background: #E86F2C;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .test-button:hover {
+            background: #d65a1f;
+        }
+
+        /* Hollywood Standard Print Styles */
+        @media print {
+            @page {
+                size: letter; /* US Letter 8.5" × 11" */
+                margin: 1in 1in 1in 1.5in; /* Top 1", Right 1", Bottom 1", Left 1.5" */
+            }
+
+            body * {
+                visibility: hidden;
+            }
+            
+            .script-document,
+            .script-document * {
+                visibility: visible;
+            }
+
+            .script-document {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                color: black !important;
+                background: white !important;
+                font-family: 'Noto Sans Mono', 'Courier Prime', 'Courier New', Courier, monospace;
+                font-size: 12pt;
+                line-height: 1; /* Single line spacing */
+                text-align: left; /* No justification */
+                hyphens: none; /* No hyphenation */
+            }
+
+            /* Hollywood Standard Paragraph Styles */
+            .script-element.scene {
+                margin-left: 0;
+                margin-right: 0;
+                margin-bottom: 6pt;
+                text-transform: uppercase;
+                font-weight: normal;
+                page-break-inside: avoid;
+                position: relative;
+            }
+
+            .scene-number {
+                position: absolute;
+                left: -1.5in; /* Outside the left margin */
+                top: 0;
+                font-weight: bold;
+                color: black;
+            }
+
+            .script-element.action {
+                margin-left: 0;
+                margin-right: 0;
+                margin-bottom: 6pt;
+                text-align: left;
+                page-break-inside: avoid;
+            }
+
+            .script-element.character {
+                margin-left: 2.2in; /* Left 3.7" - 1.5" page margin = 2.2" */
+                margin-right: 1.2in;
+                margin-top: 6pt;
+                margin-bottom: 0;
+                text-transform: uppercase;
+                font-weight: normal;
+                page-break-after: avoid;
+            }
+
+            .script-element.paren {
+                margin-left: 1.6in; /* Left 3.1" - 1.5" page margin = 1.6" */
+                margin-right: 1.5in;
+                margin-bottom: 0;
+                font-style: normal;
+                page-break-inside: avoid;
+            }
+
+            .script-element.dialogue {
+                margin-left: 1in; /* Left 2.5" - 1.5" page margin = 1" */
+                margin-right: 1.5in;
+                margin-bottom: 0;
+                position: relative;
+                page-break-inside: avoid;
+            }
+
+            .dialogue-number {
+                position: absolute;
+                right: -1.5in; /* Outside the right margin */
+                top: 0;
+                font-weight: bold;
+                color: black;
+            }
+
+            .script-element.shot {
+                margin-left: 0;
+                margin-right: 0;
+                margin-bottom: 6pt;
+                text-transform: uppercase;
+                font-weight: normal;
+                page-break-inside: avoid;
+            }
+
+            .script-element.transition {
+                margin-left: 4in; /* Left 5.5" - 1.5" page margin = 4" */
+                margin-right: 0;
+                margin-bottom: 6pt;
+                text-align: right;
+                text-transform: uppercase;
+                font-weight: normal;
+                page-break-inside: avoid;
+            }
+
+            /* Keep Character + Dialogue together */
+            .script-element.character + .script-element.paren,
+            .script-element.character + .script-element.dialogue,
+            .script-element.paren + .script-element.dialogue {
+                page-break-before: avoid;
+            }
+
+            /* Keep Scene Heading with following Action */
+            .script-element.scene + .script-element.action {
+                page-break-before: avoid;
+            }
+        }
+
+        /* Screen Preview Styles */
+        .script-document {
+            display: none;
+        }
+
+        .preview {
+            border: 1px solid #ddd;
+            padding: 40px;
+            margin-top: 20px;
+            background: white;
+            font-family: 'Noto Sans Mono', 'Courier Prime', 'Courier New', Courier, monospace;
+            font-size: 12pt;
+            line-height: 1.2;
+            position: relative;
+        }
+
+        .preview .script-element {
+            margin-bottom: 6pt;
+            position: relative;
+        }
+
+        .preview .script-element.scene {
+            text-transform: uppercase;
+            font-weight: normal;
+            margin-bottom: 6pt;
+        }
+
+        .preview .scene-number {
+            position: absolute;
+            left: -30px;
+            top: 0;
+            font-weight: bold;
+            color: black;
+        }
+
+        .preview .script-element.character {
+            margin-left: 158px; /* Approximate 2.2in at 72dpi */
+            margin-top: 6pt;
+            margin-bottom: 0;
+            text-transform: uppercase;
+            font-weight: normal;
+        }
+
+        .preview .script-element.paren {
+            margin-left: 115px; /* Approximate 1.6in at 72dpi */
+            margin-bottom: 0;
+            font-style: normal;
+        }
+
+        .preview .script-element.dialogue {
+            margin-left: 72px; /* Approximate 1in at 72dpi */
+            margin-bottom: 0;
+            position: relative;
+        }
+
+        .preview .dialogue-number {
+            position: absolute;
+            right: -30px;
+            top: 0;
+            font-weight: bold;
+            color: black;
+        }
+
+        .preview .script-element.shot {
+            text-transform: uppercase;
+            font-weight: normal;
+            margin-bottom: 6pt;
+        }
+
+        .preview .script-element.transition {
+            margin-left: 288px; /* Approximate 4in at 72dpi */
+            text-align: right;
+            text-transform: uppercase;
+            font-weight: normal;
+            margin-bottom: 6pt;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hollywood Standard Screenplay Test</h1>
+        <p>This test demonstrates the new Hollywood-standard screenplay formatting using react-to-print with precise measurements and monospaced fonts.</p>
+        
+        <button class="test-button" onclick="window.print()">Print/Export PDF</button>
+        
+        <h2>Preview (Hollywood Standard Format):</h2>
+        <div class="preview">
+            <div class="script-element scene">
+                <span class="scene-number">1</span>
+                EXT. สระพานปากน้ำประแส - DAY
+            </div>
+
+            <div class="script-element action">
+                หกกdddfsdfsdsdfj salfjklsdaf
+            </div>
+
+            <div class="script-element action">
+                เริ่มให้เห็นอะไรบางอย่างที่ดีขึ้นจากอันนี้
+            </div>
+
+            <div class="script-element character">
+                ปุ่ม
+            </div>
+
+            <div class="script-element paren">
+                (ร้องไห้)
+            </div>
+
+            <div class="script-element dialogue">
+                ทำไมทำกับพี่แบบนี้ละ พี่ไม่ดีครงไหน
+                <span class="dialogue-number">1</span>
+            </div>
+
+            <div class="script-element action">
+                เอ๋อ
+            </div>
+
+            <div class="script-element action">
+                ใช่พี่มันไม่ดี
+            </div>
+
+            <div class="script-element shot">
+                WIDE SHOT - เต็มพื้นที่ของ
+            </div>
+
+            <div class="script-element shot">
+                MEDIUM SHOT - เริ่มไม่เห็นอะไร
+            </div>
+
+            <div class="script-element action">
+                คือยๆ เห็นปุ่ม เดินออกไป
+            </div>
+
+            <div class="script-element transition">
+                CUT TO:
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden printable content -->
+    <div class="script-document" style="display: none;">
+        <div class="script-content">
+            <div class="script-element scene">
+                <span class="scene-number">1</span>
+                EXT. สระพานปากน้ำประแส - DAY
+            </div>
+
+            <div class="script-element action">
+                หกกdddfsdfsdsdfj salfjklsdaf
+            </div>
+
+            <div class="script-element action">
+                เริ่มให้เห็นอะไรบางอย่างที่ดีขึ้นจากอันนี้
+            </div>
+
+            <div class="script-element character">
+                ปุ่ม
+            </div>
+
+            <div class="script-element paren">
+                (ร้องไห้)
+            </div>
+
+            <div class="script-element dialogue">
+                ทำไมทำกับพี่แบบนี้ละ พี่ไม่ดีครงไหน
+                <span class="dialogue-number">1</span>
+            </div>
+
+            <div class="script-element action">
+                เอ๋อ
+            </div>
+
+            <div class="script-element action">
+                ใช่พี่มันไม่ดี
+            </div>
+
+            <div class="script-element shot">
+                WIDE SHOT - เต็มพื้นที่ของ
+            </div>
+
+            <div class="script-element shot">
+                MEDIUM SHOT - เริ่มไม่เห็นอะไร
+            </div>
+
+            <div class="script-element action">
+                คือยๆ เห็นปุ่ม เดินออกไป
+            </div>
+
+            <div class="script-element transition">
+                CUT TO:
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Show the printable content when printing
+        window.addEventListener('beforeprint', function() {
+            document.querySelector('.script-document').style.display = 'block';
+        });
+
+        window.addEventListener('afterprint', function() {
+            document.querySelector('.script-document').style.display = 'none';
+        });
+    </script>
+</body>
+</html>

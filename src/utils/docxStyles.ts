@@ -5,7 +5,6 @@ import {
   HeadingLevel, 
   LevelFormat, 
   PageBorderDisplay, 
-  PageNumberFormat, 
   TabStopPosition, 
   TabStopType 
 } from 'docx';
@@ -47,7 +46,7 @@ const INDENTATIONS = {
 export const docxStyles = {
   // Default style for all text
   default: {
-    font: "Courier Prime",
+    font: "Noto Sans Thai",
     size: 24, // 12pt
     spacing: {
       line: 240, // Single spacing (24 * 10)
@@ -150,6 +149,18 @@ export const pageSetup = {
 export const headerSetup = {
   default: {
     size: 24, // 12pt
-    font: "Courier Prime"
+    font: "Noto Sans Thai"
   }
+};
+
+// Thai screenplay specific layout constants
+export const THAI_LAYOUT = {
+  // Scene number column width (left margin for scene numbers)
+  sceneNumberColumn: inchesToTwip(0.5), // 0.5 inch for scene numbers
+  // Tab stop position for scene headings after scene number
+  sceneHeadingTabStop: inchesToTwip(0.7), // Scene heading starts at 0.7 inches
+  // Standard body text indent (for action, text, shot blocks)
+  bodyTextIndent: inchesToTwip(0.7), // Same as scene heading tab stop for consistency
+  // Right-aligned tab stop position for dialogue numbers (matches transition alignment)
+  dialogueNumberTabStop: inchesToTwip(8.5) - inchesToTwip(MARGINS.right), // Page width minus right margin
 };

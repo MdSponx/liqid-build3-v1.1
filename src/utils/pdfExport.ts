@@ -49,7 +49,7 @@ const blockLayouts = {
     rightAlign: false
   },
   'character': {
-    marginLeft: 200, // 200pt from left margin
+    marginLeft: 280, // 280pt from left margin - much more centered
     indent: 0,
     spaceAfter: 0,
     uppercase: true,
